@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>정렬 알고리즘 시각화 (Bubble / Merge / Quick + α) - withSeok</title>
+
+  <!-- [주석단위] #_Part_00100_import  -->
+  <style>
+    /* [주석단위] #_Part_00200_style  */
+    :root{
+      --bg:#0f1420;
+      --panel:#151c2a;
+      --ink:#e8eefc;
+      --muted:#a7b2cc;
+      --accent:#5ab1ff;
+      --accent-2:#79e2a3;
+      --warn:#ff9f5a;
+      --bar:#7aa4ff;
+      --compare:#ffd166;
+      --swap:#ff6b6b;
+      --write:#79e2a3;
+      --grid-gap: 4px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:linear-gradient(180deg,#0b1020,#0f1420 40%,#0b1020);
+      color:var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Apple SD Gothic Neo", "Noto Sans KR", "맑은 고딕", "Malgun Gothic", Arial, Helvetica, sans-serif;
+    }
+    .app{
+      display:grid; grid-template-columns: 1fr 340px; gap:16px;
+      min-height:100vh; padding:18px 18px 120px;
+    }
+    header{
+      grid-column:1 / -1; display:flex; align-items:baseline; gap:12px;
+      padding:8px 0 4px 0;
+    }
+    header h1{margin:0; font-size: clamp(18px, 2.2vw, 28px); font-weight:800; letter-spacing:.2px}
+    header .badge{font-size:12px; color:var(--muted)}
+    .stage{
+      background:var(--panel); border:1px solid #1f2940; border-radius:14px;
+      padding:16px; display:flex; flex-direction:column; gap:12px;
+    }
+    .canvas-wrap{
+      position:relative; flex:1; min-height:260px; height:min(58vh,640px);
+      background: repeating-linear-gradient(
+        to right, #111929, #111929 1px, transparent 1px, transparent 12px
+      );
+      border-radius:12px; padding:12px;
+      overflow:hidden; border:1px solid #1d2538;
+    }
+    #bars{
+      height:100%; display:flex; align-items:flex-end; gap:var(--grid-gap);
+      transition: height .2s ease;
+    }
+    .bar{
+      flex:1 0 auto; width:10px; min-width:3px;
+      background:var(--bar); border-radius:6px 6px 0 0;
+      position:relative; transition:transform .08s ease, height .08s ease;
+    }
+    .bar small{
+      position:absolute; bottom:-20px; left:50%; transform:translateX(-50%);
+      font-size:10px; color:var(--muted); user-select:none;
+    }
+    .bar.compare{ background:var(--compare) }
+    .bar.swap{ background:var(--swap) }
+    .bar.write{ background:var(--write) }
+
+    .side{
+      background:var(--panel); border:1px solid #1f2940; border-radius:14px;
+      padding:16px; display:flex; flex-direction:column; gap:14px;
+    }
+    .side h2{margin:0; font-size:16px}
+    .controls{ display:grid; gap:10px }
+    .row{ display:flex; align-items:center; justify-content:space-between; gap:10px }
+    .row label{font-size:12px; color:var(--muted)}
+    .row input[type="range"]{ width:56% }
+    .row input[type="number"]{ width:90px; background:#0e1525; color:var(--ink); border:1px solid #26314d; padding:6px 8px; border-radius:8px }
+    .btns{ display:grid; grid-template-columns:1fr 1fr; gap:10px }
+    .btns.wide{ grid-template-columns:1fr 1fr 1fr }
+    button{
+      background:#0e1525; color:var(--ink); border:1px solid #26314d;
+      padding:10px 12px; border-radius:10px; cursor:pointer; font-weight:700;
+    }
+    button.primary{ border-color:#2b6fff; background:linear-gradient(180deg,#1840b8,#11318c); }
+    button.warn{ border-color:#ff7a59; background:linear-gradient(180deg,#c74c2d,#91371f); }
+    button:disabled{ opacity:.6; cursor:not-allowed }
+    .pill{
+      display:inline-flex; align-items:center; gap:6px; padding:8px 10px;
+      background:#0e1525; border:1px solid #26314d; border-radius:999px;
+      font-size:12px; color:var(--muted)
+    }
+    .stat{ font-variant-numeric: tabular-nums; color:var(--ink) }
+    .legend{ display:flex; gap:8px; flex-wrap:wrap }
+    .legend .key{ display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted) }
+    .legend .swatch{ width:14px; height:8px; border-radius:3px; }
+
+    /* [주석단위] #_Part_00250_info_panel */
+    .info{
+      grid-column:1 / -1;
+      margin-top:6px;
+      background: #0e1525;
+      border:1px solid #26314d;
+      border-radius:12px;
+      padding:10px 14px;
+      color:var(--muted);
+      font-size:12.5px;
+      line-height:1.55;
+      max-height:140px;
+      overflow:auto;
+    }
+    .info .lead{
+      color:#b7c4e3; font-weight:700; margin-right:6px;
+    }
+    .info button.inline{
+      font-size:11px; padding:4px 8px; border-radius:999px;
+      margin-right:8px; vertical-align:middle;
+      background:#0b1222; border:1px solid #31406a; color:#cfe1ff;
+    }
+    .info .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; color:#cfe1ff }
+
+    /* [주석단위] #_Part_00280_detail_overlay */
+    .overlay{
+      position:fixed; inset:0; background:rgba(7,10,20,.86); backdrop-filter: blur(8px);
+      display:none; z-index:1000;
+    }
+    .overlay.show{ display:block; }
+    .overlay .card{
+      position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+      width:min(920px, 92vw);
+      max-height:82vh; overflow:auto;
+      background:#141b2b; border:1px solid #2a3656; border-radius:14px;
+      padding:18px 18px 22px;
+      color:var(--ink);
+    }
+    .overlay h3{ margin:0 0 8px 0; font-size:20px }
+    .overlay .sub{ color:var(--muted); margin:0 0 12px 0; font-size:13px }
+    .overlay .back{
+      position:sticky; top:0; display:inline-block; margin-bottom:10px;
+      padding:8px 12px; border-radius:10px; border:1px solid #2a3656;
+      background:#0e1525; color:#cfe1ff; cursor:pointer; font-weight:700;
+    }
+    .overlay .code{
+      white-space:pre-wrap; font-family: ui-monospace, Menlo, Consolas, monospace;
+      background:#0b1222; border:1px solid #273357; color:#d7e6ff;
+      border-radius:10px; padding:10px; font-size:12.5px;
+    }
+
+    footer.site{
+      position:fixed; left:0; right:0; bottom:0;
+      background:rgba(10,14,26,.88); backdrop-filter: blur(8px);
+      border-top:1px solid #1d2538; padding:10px 14px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:center;
+      font-size:12px; color:var(--muted)
+    }
+    footer.site a{ color:var(--accent); text-decoration:none }
+    footer.site .brand{ color:var(--accent-2); font-weight:800 }
+  </style>
+</head>
+<body>
+  <!-- [주석단위] #_Part_00300_body_layout  -->
+  <div class="app">
+    <header>
+      <h1>정렬 알고리즘 시각화 · Bubble / Merge / Quick + More</h1>
+      <span class="badge">웹오디오: 막대 높이 = 주파수 · 시각+청각 정렬 체험</span>
+      <span class="pill" id="algo-pill">알고리즘: <b class="stat" id="algo-name">—</b></span>
+      <span class="pill">연산(비교/교환/기록): <b class="stat" id="ops">0</b></span>
+    </header>
+
+    <section class="stage" aria-label="정렬 무대">
+      <div class="canvas-wrap">
+        <div id="bars" aria-label="정렬 막대 영역"></div>
+      </div>
+      <div class="legend" aria-hidden="true">
+        <span class="key"><span class="swatch" style="background:var(--bar)"></span>기본</span>
+        <span class="key"><span class="swatch" style="background:var(--compare)"></span>비교</span>
+        <span class="key"><span class="swatch" style="background:var(--swap)"></span>교환</span>
+        <span class="key"><span class="swatch" style="background:var(--write)"></span>기록/병합</span>
+      </div>
+    </section>
+
+    <aside class="side" aria-label="조작 패널">
+      <h2>컨트롤</h2>
+      <div class="controls">
+        <div class="row">
+          <label for="size">개수 (1–500)</label>
+          <input id="size" type="number" min="1" max="500" step="1" value="50" />
+        </div>
+        <div class="row">
+          <label for="speed">속도 (느림↔빠름)</label>
+          <input id="speed" type="range" min="0" max="100" value="60" />
+        </div>
+        <div class="row">
+          <label for="sound">사운드</label>
+          <input id="sound" type="checkbox" checked />
+        </div>
+
+        <div class="btns">
+          <button id="shuffle">섞기</button>
+          <button id="stop" class="warn">정지</button>
+        </div>
+
+        <p style="margin:.4rem 0 .2rem; color:var(--muted); font-size:12px">기본 3종</p>
+        <div class="btns">
+          <button id="btn-bubble" class="primary">버블</button>
+          <button id="btn-merge" class="primary">병합</button>
+          <button id="btn-quick" class="primary">퀵</button>
+        </div>
+
+        <p style="margin:.6rem 0 .2rem; color:var(--muted); font-size:12px">추가(시각 효과 좋은 편)</p>
+        <div class="btns wide">
+          <button id="btn-insertion">삽입</button>
+          <button id="btn-selection">선택</button>
+          <button id="btn-heap">힙</button>
+          <button id="btn-shell">셸</button>
+          <button id="btn-cocktail">칵테일</button>
+          <button id="btn-shaker" style="display:none"></button>
+        </div>
+
+        <p style="margin:.6rem 0 0; color:var(--muted); font-size:12px">
+          많은 개수(예: 500)는 브라우저 성능에 따라 느려질 수 있어요.
+        </p>
+      </div>
+    </aside>
+
+    <!-- [주석단위] #_Part_00380_info_panel  -->
+    <section class="info" id="info">
+      <span class="lead">알고리즘 설명</span>
+      <button class="inline" id="btn-advanced">[고급설명]</button>
+      <span id="info-text">
+        우측에서 정렬 알고리즘을 선택하면, 여기에서 쉬운 설명을 읽을 수 있어요.
+        정렬이 진행되는 동안 천천히 읽어보세요. (<span class="mono">Bubble, Merge, Quick, Insertion, Selection, Heap, Shell, Cocktail</span>)
+      </span>
+    </section>
+  </div>
+
+  <!-- [주석단위] #_Part_00400_audio  -->
+  <script>
+    // Web Audio 톤 발생기 (막대 값 → 주파수)
+    let audioCtx = null;
+    function initAudio(){
+      if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    function tone(freq=440, dur=0.04, vol=0.12){
+      if(!document.getElementById('sound').checked) return;
+      if(!audioCtx) initAudio();
+      const t0 = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t0);
+      gain.gain.setValueAtTime(vol, t0);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.01);
+    }
+    function valueToFreq(v, maxV){
+      // 160Hz ~ 1200Hz 사이로 매핑 (로그 성향)
+      const minF = 160, maxF = 1200;
+      return minF + (maxF - minF) * Math.pow(v / Math.max(1, maxV), 0.65);
+    }
+  </script>
+
+  <!-- [주석단위] #_Part_00500_utils  -->
+  <script>
+    const barsEl = document.getElementById('bars');
+    const sizeEl = document.getElementById('size');
+    const speedEl = document.getElementById('speed');
+    const algoNameEl = document.getElementById('algo-name');
+    const opsEl = document.getElementById('ops');
+    const infoTextEl = document.getElementById('info-text');
+    const btnAdvanced = document.getElementById('btn-advanced');
+
+    let data = [];
+    let maxVal = 50;
+    let running = false;
+    let opCount = 0;
+    let currentAlgoKey = null;
+
+    function sleepBase(){
+      // 속도 슬라이더: 0(느림)~100(빠름) → 지연시간(ms)
+      const s = parseInt(speedEl.value,10);
+      return 4 + Math.floor(280 * Math.pow(1 - s/100, 2.2));
+    }
+    function sleep(ms){ return new Promise(res => setTimeout(res, ms)); }
+    function bumpOps(n=1){ opCount += n; opsEl.textContent = opCount.toString(); }
+
+    function randomize(n){
+      data = Array.from({length:n},(_,i)=>i+1);
+      for(let i=data.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [data[i],data[j]] = [data[j],data[i]];
+      }
+      maxVal = n;
+    }
+
+    function clearBars(){ barsEl.innerHTML = ''; }
+    function renderBars(){
+      clearBars();
+      const gap = 4;
+      const totalGap = gap*(data.length-1);
+      const barW = Math.max(3, Math.floor((barsEl.clientWidth - totalGap)/data.length));
+      data.forEach(v=>{
+        const d = document.createElement('div');
+        d.className = 'bar';
+        d.style.height = (2 + (v/maxVal)*96) + '%';
+        d.style.width = barW+'px';
+        const s = document.createElement('small');
+        s.textContent = v;
+        d.appendChild(s);
+        barsEl.appendChild(d);
+      });
+    }
+    function updateBar(i, v, cls){
+      data[i] = v;
+      const el = barsEl.children[i];
+      el.style.height = (2 + (v/maxVal)*96) + '%';
+      el.classList.remove('compare','swap','write');
+      if(cls) el.classList.add(cls);
+      el.querySelector('small').textContent = v;
+    }
+    function mark(i, type){
+      if(i<0 || i>=data.length) return;
+      const el = barsEl.children[i];
+      el.classList.remove('compare','swap','write');
+      if(type) el.classList.add(type);
+    }
+    function unmark(i){
+      if(i<0 || i>=data.length) return;
+      barsEl.children[i].classList.remove('compare','swap','write');
+    }
+    async function ping(i){
+      const v = data[i];
+      tone(valueToFreq(v, maxVal), 0.03);
+      await sleep(sleepBase());
+    }
+    async function swap(i,j){
+      const vi = data[i], vj = data[j];
+      mark(i,'swap'); mark(j,'swap'); bumpOps();
+      tone(valueToFreq(vi, maxVal), 0.03);
+      tone(valueToFreq(vj, maxVal), 0.03);
+      [data[i],data[j]] = [vj,vi];
+      updateBar(i, data[i]); updateBar(j, data[j]);
+      await sleep(sleepBase());
+      unmark(i); unmark(j);
+    }
+
+    function isSorted(){
+      for(let i=1;i<data.length;i++) if(data[i-1]>data[i]) return false;
+      return true;
+    }
+  </script>
+
+  <!-- [주석단위] #_Part_00600_data_init  -->
+  <script>
+    function init(n=50){
+      randomize(n);
+      opCount = 0; opsEl.textContent='0';
+      algoNameEl.textContent='—';
+      currentAlgoKey = null;
+      renderBars();
+      // 초기 안내 문구 복구
+      infoTextEl.innerHTML = '우측에서 정렬 알고리즘을 선택하면, 여기에서 쉬운 설명을 읽을 수 있어요. 정렬이 진행되는 동안 천천히 읽어보세요. (<span class="mono">Bubble, Merge, Quick, Insertion, Selection, Heap, Shell, Cocktail</span>)';
+    }
+    window.addEventListener('resize', ()=>renderBars());
+  </script>
+
+  <!-- [주석단위] #_Part_00700_render  -->
+  <script> init(parseInt(sizeEl.value,10)); </script>
+
+  <!-- [주석단위] #_Part_00800_algorithms_base3  -->
+  <script>
+    async function bubbleSort(){
+      setInfo('bubble');
+      algoNameEl.textContent='Bubble Sort (버블)';
+      const n = data.length;
+      for(let i=0;i<n-1 && running;i++){
+        let swapped=false;
+        for(let j=0;j<n-i-1 && running;j++){
+          mark(j,'compare'); mark(j+1,'compare'); bumpOps();
+          tone(valueToFreq(Math.max(data[j],data[j+1]), maxVal), 0.02, 0.09);
+          await sleep(sleepBase());
+          if(data[j] > data[j+1]){
+            await swap(j, j+1);
+            swapped = true;
+          }else{
+            unmark(j); unmark(j+1);
+          }
+        }
+        if(!swapped) break;
+      }
+      finalizeBars();
+    }
+
+    async function mergeSort(){
+      setInfo('merge');
+      algoNameEl.textContent='Merge Sort (병합)';
+      const aux = data.slice();
+
+      async function merge(lo, mid, hi){
+        for(let k=lo;k<=hi;k++) aux[k]=data[k];
+
+        let i=lo, j=mid+1;
+        for(let k=lo;k<=hi && running;k++){
+          bumpOps();
+          if(i<=mid) mark(i,'compare');
+          if(j<=hi) mark(j,'compare');
+          tone(valueToFreq((i<=mid?aux[i]:0)+(j<=hi?aux[j]:0), maxVal), 0.02);
+
+          await sleep(sleepBase());
+
+          if(i>mid) {
+            data[k]=aux[j++]; updateBar(k,data[k],'write');
+          } else if(j>hi) {
+            data[k]=aux[i++]; updateBar(k,data[k],'write');
+          } else if(aux[j] < aux[i]){
+            data[k]=aux[j++]; updateBar(k,data[k],'write');
+          } else{
+            data[k]=aux[i++]; updateBar(k,data[k],'write');
+          }
+          await sleep(sleepBase());
+          if(i-1>=lo && i-1<=mid) unmark(i-1);
+          if(j-1>=mid+1 && j-1<=hi) unmark(j-1);
+        }
+      }
+
+      async function sort(lo, hi){
+        if(!running) return;
+        if(hi<=lo) return;
+        const mid = Math.floor(lo + (hi-lo)/2);
+        await sort(lo, mid);
+        await sort(mid+1, hi);
+        await merge(lo, mid, hi);
+      }
+      await sort(0, data.length-1);
+      finalizeBars();
+    }
+
+    async function quickSort(){
+      setInfo('quick');
+      algoNameEl.textContent='Quick Sort (퀵)';
+      async function partition(lo, hi){
+        const pivot = data[hi];
+        let i = lo;
+        mark(hi,'write'); tone(valueToFreq(pivot, maxVal), 0.03);
+        for(let j=lo;j<hi && running;j++){
+          mark(j,'compare'); bumpOps();
+          tone(valueToFreq(data[j], maxVal), 0.02);
+          await sleep(sleepBase());
+          if(data[j] < pivot){
+            await swap(i,j);
+            i++;
+          }else{
+            unmark(j);
+          }
+        }
+        await swap(i, hi);
+        return i;
+      }
+      async function q(lo, hi){
+        if(!running) return;
+        if(lo<hi){
+          const p = await partition(lo, hi);
+          await q(lo, p-1);
+          await q(p+1, hi);
+        }
+      }
+      await q(0, data.length-1);
+      finalizeBars();
+    }
+  </script>
+
+  <!-- [주석단위] #_Part_00900_algorithms_more  -->
+  <script>
+    async function insertionSort(){
+      setInfo('insertion');
+      algoNameEl.textContent='Insertion Sort (삽입)';
+      const n = data.length;
+      for(let i=1; i<n && running; i++){
+        let key = data[i];
+        mark(i,'swap'); tone(valueToFreq(key, maxVal), 0.03);
+        await sleep(sleepBase());
+        let j = i - 1;
+        while(j >= 0 && running && data[j] > key){
+          bumpOps();
+          mark(j,'compare');
+          data[j+1] = data[j];
+          updateBar(j+1, data[j+1], 'write');
+          tone(valueToFreq(data[j+1], maxVal), 0.02);
+          await sleep(sleepBase());
+          unmark(j);
+          j--;
+        }
+        data[j+1] = key;
+        updateBar(j+1, key, 'write');
+        await sleep(sleepBase());
+        unmark(i);
+      }
+      finalizeBars();
+    }
+
+    async function selectionSort(){
+      setInfo('selection');
+      algoNameEl.textContent='Selection Sort (선택)';
+      const n = data.length;
+      for(let i=0;i<n-1 && running;i++){
+        let minIdx = i;
+        mark(i,'write');
+        for(let j=i+1;j<n && running;j++){
+          mark(j,'compare'); bumpOps();
+          await sleep(sleepBase());
+          if(data[j] < data[minIdx]){ unmark(minIdx); minIdx = j; mark(minIdx,'write'); }
+          else unmark(j);
+        }
+        if(minIdx !== i) await swap(i, minIdx);
+        unmark(i); unmark(minIdx);
+      }
+      finalizeBars();
+    }
+
+    async function heapSort(){
+      setInfo('heap');
+      algoNameEl.textContent='Heap Sort (힙)';
+      const n = data.length;
+
+      async function heapify(n, i){
+        let largest = i;
+        const l = 2*i + 1;
+        const r = 2*i + 2;
+
+        if(l < n){
+          mark(l,'compare'); bumpOps();
+          await sleep(sleepBase());
+          if(data[l] > data[largest]) largest = l;
+          unmark(l);
+        }
+        if(r < n){
+          mark(r,'compare'); bumpOps();
+          await sleep(sleepBase());
+          if(data[r] > data[largest]) largest = r;
+          unmark(r);
+        }
+        if(largest !== i){
+          await swap(i, largest);
+          await heapify(n, largest);
+        }
+      }
+
+      for(let i=Math.floor(n/2)-1; i>=0 && running; i--){
+        await heapify(n, i);
+      }
+      for(let i=n-1; i>0 && running; i--){
+        await swap(0, i);
+        mark(i,'write');
+        await heapify(i, 0);
+      }
+      finalizeBars();
+    }
+
+    async function shellSort(){
+      setInfo('shell');
+      algoNameEl.textContent='Shell Sort (셸)';
+      const n = data.length;
+      for(let gap=Math.floor(n/2); gap>0 && running; gap=Math.floor(gap/2)){
+        for(let i=gap; i<n && running; i++){
+          let temp = data[i];
+          mark(i,'swap'); tone(valueToFreq(temp, maxVal), 0.03);
+          await sleep(sleepBase());
+          let j = i;
+          while(j>=gap && running && data[j-gap] > temp){
+            bumpOps();
+            mark(j-gap,'compare');
+            data[j] = data[j-gap];
+            updateBar(j, data[j], 'write');
+            await sleep(sleepBase());
+            unmark(j-gap);
+            j -= gap;
+          }
+          data[j] = temp;
+          updateBar(j, temp, 'write');
+          await sleep(sleepBase());
+          unmark(i);
+        }
+      }
+      finalizeBars();
+    }
+
+    async function cocktailSort(){
+      setInfo('cocktail');
+      algoNameEl.textContent='Cocktail Shaker Sort (칵테일)';
+      let start = 0;
+      let end = data.length - 1;
+      let swapped = true;
+
+      while(swapped && running){
+        swapped = false;
+        for(let i=start; i<end && running; i++){
+          mark(i,'compare'); mark(i+1,'compare'); bumpOps();
+          await sleep(sleepBase());
+          if(data[i] > data[i+1]){ await swap(i, i+1); swapped = true; }
+          else{ unmark(i); unmark(i+1); }
+        }
+        end--;
+        if(!swapped) break;
+        swapped = false;
+        for(let i=end; i>start && running; i--){
+          mark(i-1,'compare'); mark(i,'compare'); bumpOps();
+          await sleep(sleepBase());
+          if(data[i-1] > data[i]){ await swap(i-1, i); swapped = true; }
+          else{ unmark(i-1); unmark(i); }
+        }
+        start++;
+      }
+      finalizeBars();
+    }
+
+    function finalizeBars(){
+      if(!running) return;
+      const N = Math.min(14, data.length);
+      const stride = Math.max(1, Math.floor(data.length / N));
+      (async ()=>{
+        for(let i=0;i<data.length;i+=stride){
+          if(!barsEl.children[i]) continue;
+          barsEl.children[i].classList.add('write');
+          tone(valueToFreq(data[i], maxVal), 0.02, 0.1);
+          await sleep(8);
+        }
+      })();
+    }
+  </script>
+
+  <!-- [주석단위] #_Part_00950_info_content  -->
+  <script>
+    const simpleDesc = {
+      bubble: '버블 정렬은 이웃한 두 값을 계속 비교해 큰 값을 오른쪽으로 밀어 냅니다. 거품이 위로 떠오르듯, 큰 수가 끝으로 이동해요. 이해하기 쉽지만 비교가 많아 느린 편입니다.',
+      merge: '병합 정렬은 배열을 반으로 나눠 각각 정렬하고, 두 묶음을 합치며 정렬합니다. “쪼개서 정복”하는 방법이라 항상 일정하게 빠른 편(O(n log n))이에요.',
+      quick: '퀵 정렬은 기준값(피벗)을 하나 고르고, 작은 값은 왼쪽, 큰 값은 오른쪽으로 보내며 나눕니다. 평균적으로 매우 빠르지만, 피벗을 잘 고르는 게 중요해요.',
+      insertion: '삽입 정렬은 왼쪽부터 “정렬된 구간”을 키워가며, 새 값을 알맞은 자리에 끼워 넣습니다. 거의 정렬된 데이터에서 특히 빠릅니다.',
+      selection: '선택 정렬은 남은 구간에서 가장 작은 값을 골라 맨 앞과 바꿉니다. 단순하지만 불필요한 비교가 많아 느린 편이에요.',
+      heap: '힙 정렬은 “최댓값을 빨리 꺼낼 수 있는” 힙 자료구조를 만들고, 하나씩 꺼내 뒤에서부터 채웁니다. 최악의 경우에도 O(n log n)을 보장해요.',
+      shell: '셸 정렬은 간격(gap)을 두고 떨어진 값끼리 삽입 정렬을 하다가, 간격을 줄이며 정렬을 정교하게 만듭니다. 단순 삽입 정렬보다 대체로 빠릅니다.',
+      cocktail: '칵테일 정렬은 버블 정렬을 양방향으로 수행합니다. 오른쪽으로 큰 값을 밀고, 다시 왼쪽으로 작은 값을 끌어옵니다.'
+    };
+
+    const advancedDesc = {
+      bubble: {
+        title: 'Bubble Sort (버블 정렬) — 상세 설명',
+        html: `
+<b>아이디어</b><br>
+이웃한 두 원소를 비교·교환하며 큰 원소를 오른쪽 끝으로 “떠오르게” 합니다.<br><br>
+<b>과정</b><ol>
+<li>0..n-2까지 j를 돌며 A[j] &gt; A[j+1]이면 교환.</li>
+<li>한 바퀴가 끝나면 가장 큰 값이 맨 끝에 위치.</li>
+<li>끝에서 확정된 구간을 제외하고 반복.</li></ol>
+<b>성능</b><br>
+평균/최악 O(n²), 최선(이미 정렬) O(n), 제자리, 안정적.<br><br>
+<b>포인트</b> 이미 정렬된 경우 <span class="mono">swapped</span> 플래그로 조기 종료 가능.
+`
+      },
+      merge: {
+        title: 'Merge Sort (병합 정렬) — 상세 설명',
+        html: `
+<b>아이디어</b><br>
+분할정복: 반으로 쪼개 각각 정렬 → 두 정렬 리스트를 병합.<br><br>
+<b>과정</b><ol>
+<li>중간 인덱스로 분할하며 재귀적으로 정렬.</li>
+<li>보조 배열에 복사 후 두 포인터로 작은 값부터 본 배열에 덮어씀.</li></ol>
+<b>성능</b><br>
+항상 O(n log n), 추가 메모리 O(n), 안정 정렬.<br><br>
+<b>포인트</b> 외부정렬/연속 I/O에 유리, 링크드리스트와 궁합 좋음.
+`
+      },
+      quick: {
+        title: 'Quick Sort (퀵 정렬) — 상세 설명',
+        html: `
+<b>아이디어</b><br>
+피벗을 기준으로 작은 값/큰 값을 양쪽으로 분할, 각 구간에 재귀 적용.<br><br>
+<b>과정</b><ol>
+<li>피벗 선택(끝/무작위/median-of-three 등).</li>
+<li>피벗보다 작은 값은 왼쪽, 큰 값은 오른쪽으로 재배치(partition).</li>
+<li>좌/우 부분배열에 대해 재귀 호출.</li></ol>
+<b>성능</b><br>
+평균 O(n log n), 최악 O(n²), 제자리, 비안정.<br><br>
+<b>포인트</b> 좋은 피벗 선택이 핵심(무작위/삼중 중간값).
+`
+      },
+      insertion: {
+        title: 'Insertion Sort (삽입 정렬) — 상세 설명',
+        html: `
+<b>아이디어</b><br>
+왼쪽의 정렬된 구간에 새 값을 “알맞은 위치”에 삽입.<br><br>
+<b>과정</b><ol>
+<li>i=1..n-1 순회, key=A[i].</li>
+<li>왼쪽으로 key보다 큰 값을 한 칸씩 밀기.</li>
+<li>빈 자리에 key 삽입.</li></ol>
+<b>성능</b><br>
+평균/최악 O(n²), 최선 O(n), 제자리, 안정적.<br><br>
+<b>포인트</b> 거의 정렬된 데이터/작은 n에서 강력.
+`
+      },
+      selection: {
+        title: 'Selection Sort (선택 정렬) — 상세 설명',
+        html: `
+<b>아이디어</b><br>
+남은 구간에서 최솟값 위치를 골라 맨 앞으로 교환.<br><br>
+<b>과정</b><ol>
+<li>i=0..n-2에서 minIdx 찾기.</li>
+<li>i != minIdx면 A[i]와 A[minIdx] 교환.</li></ol>
+<b>성능</b><br>
+비교 O(n²) 고정, 교환은 최대 n-1, 제자리, 비안정.<br><br>
+<b>포인트</b> 교환 횟수는 적으나 비교가 많아 비효율적.
+`
+      },
+      heap: {
+        title: 'Heap Sort (힙 정렬) — 상세 설명',
+        html: `
+<b>아이디어</b><br>
+배열을 최대 힙으로 만들고, 루트(최댓값)를 뒤로 보내며 힙을 줄여감.<br><br>
+<b>과정</b><ol>
+<li>하향식 heapify로 최대 힙 구성.</li>
+<li>루트와 맨 끝 교환 → 크기-1 → 다시 heapify.</li></ol>
+<b>성능</b><br>
+항상 O(n log n), 제자리, 비안정.<br><br>
+<b>포인트</b> 최악 보장, 캐시 친화성은 퀵보다 떨어질 수 있음.
+`
+      },
+      shell: {
+        title: 'Shell Sort (셸 정렬) — 상세 설명',
+        html: `
+<b>아이디어</b><br>
+간격(gap)으로 묶인 부분열에 삽입 정렬을 적용, gap을 줄이며 정밀화.<br><br>
+<b>과정</b><ol>
+<li>초기 gap(대개 n/2) 선택.</li>
+<li>각 i에 대해 j=j-gap씩 이동하며 삽입.</li>
+<li>gap을 절반 등으로 줄여 1이 될 때까지 반복.</li></ol>
+<b>성능</b><br>
+gap 선택에 따라 달라짐(전통적 O(n^{3/2}) 등), 제자리, 비안정.<br><br>
+<b>포인트</b> 구현 간단, 삽입 정렬을 가속.
+`
+      },
+      cocktail: {
+        title: 'Cocktail Shaker Sort (칵테일 정렬) — 상세 설명',
+        html: `
+<b>아이디어</b><br>
+버블 정렬을 양방향으로 수행하여 양끝에서 확정 속도를 올림.<br><br>
+<b>과정</b><ol>
+<li>왼→오른쪽으로 큰 값 밀기.</li>
+<li>오른→왼쪽으로 작은 값 끌어오기.</li>
+<li>범위를 줄이며 반복.</li></ol>
+<b>성능</b><br>
+평균/최악 O(n²), 제자리, 보통 비안정.<br><br>
+<b>포인트</b> 버블보다 약간 실용적일 때가 있음(양방향 패스).
+`
+      }
+    };
+
+    function setInfo(key){
+      currentAlgoKey = key;
+      const msg = simpleDesc[key] || '선택된 알고리즘 설명이 준비되어 있습니다.';
+      infoTextEl.textContent = msg;
+    }
+  </script>
+
+  <!-- [주석단위] #_Part_01000_controls  -->
+  <script>
+    const btnShuffle   = document.getElementById('shuffle');
+    const btnStop      = document.getElementById('stop');
+    const btnBubble    = document.getElementById('btn-bubble');
+    const btnMerge     = document.getElementById('btn-merge');
+    const btnQuick     = document.getElementById('btn-quick');
+    const btnInsertion = document.getElementById('btn-insertion');
+    const btnSelection = document.getElementById('btn-selection');
+    const btnHeap      = document.getElementById('btn-heap');
+    const btnShell     = document.getElementById('btn-shell');
+    const btnCocktail  = document.getElementById('btn-cocktail');
+
+    function lockUI(on){
+      [btnBubble,btnMerge,btnQuick,btnInsertion,btnSelection,btnHeap,btnShell,btnCocktail,btnShuffle,sizeEl].forEach(b=>b.disabled=on);
+    }
+    function ensureAudioStart(){ initAudio(); }
+
+    btnShuffle.addEventListener('click', ()=>{
+      if(running) return;
+      const n = clamp(parseInt(sizeEl.value,10) || 50, 1, 500);
+      sizeEl.value = n;
+      init(n);
+    });
+    btnStop.addEventListener('click', ()=>{
+      running = false;
+      lockUI(false);
+    });
+    sizeEl.addEventListener('change', ()=>{
+      if(running) return;
+      const n = clamp(parseInt(sizeEl.value,10) || 50, 1, 500);
+      sizeEl.value = n;
+      init(n);
+    });
+
+    function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+    async function runAlgo(fn){
+      if(running) return;
+      ensureAudioStart();
+      running = true; lockUI(true); opCount=0; opsEl.textContent='0';
+      try{ await fn(); } finally { running = false; lockUI(false); }
+    }
+
+    btnBubble  .addEventListener('click', ()=> runAlgo(bubbleSort));
+    btnMerge   .addEventListener('click', ()=> runAlgo(mergeSort));
+    btnQuick   .addEventListener('click', ()=> runAlgo(quickSort));
+    btnInsertion.addEventListener('click', ()=> runAlgo(insertionSort));
+    btnSelection.addEventListener('click', ()=> runAlgo(selectionSort));
+    btnHeap    .addEventListener('click', ()=> runAlgo(heapSort));
+    btnShell   .addEventListener('click', ()=> runAlgo(shellSort));
+    btnCocktail.addEventListener('click', ()=> runAlgo(cocktailSort));
+
+    // 첫 렌더 후 자동 섞기
+    setTimeout(()=>btnShuffle.click(), 60);
+
+    // [주석단위] #_Part_01020_advanced_button
+    btnAdvanced.addEventListener('click', ()=>{
+      if(!currentAlgoKey){ openDetail('guide', {title:'안내', html:'오른쪽에서 알고리즘을 먼저 선택해 주세요.'}); return; }
+      const pack = advancedDesc[currentAlgoKey];
+      if(!pack){ openDetail('guide', {title:'안내', html:'해당 알고리즘의 고급설명은 준비 중입니다.'}); return; }
+      openDetail(currentAlgoKey, pack);
+    });
+  </script>
+
+  <!-- [주석단위] #_Part_01100_detail_overlay  -->
+  <div class="overlay" id="detail-overlay" aria-modal="true" role="dialog" aria-labelledby="detail-title">
+    <div class="card">
+      <button class="back" id="btn-back">← 홈으로 돌아가기</button>
+      <h3 id="detail-title">제목</h3>
+      <p class="sub" id="detail-sub">정렬 알고리즘 상세 설명</p>
+      <div id="detail-body"></div>
+      <div style="height:10px"></div>
+      <div class="code" id="detail-footnote">
+시간복잡도 표기: 평균/최악/최선, 안정성(같은 값 순서 유지 여부), 제자리(in-place) 여부 등 핵심 용어를 함께 확인하면 좋아요.
+      </div>
+    </div>
+  </div>
+
+  <!-- [주석단위] #_Part_01120_detail_logic  -->
+  <script>
+    const overlay = document.getElementById('detail-overlay');
+    const backBtn = document.getElementById('btn-back');
+    const dTitle = document.getElementById('detail-title');
+    const dSub = document.getElementById('detail-sub');
+    const dBody = document.getElementById('detail-body');
+
+    function openDetail(key, pack){
+      dTitle.textContent = pack.title || '정렬 알고리즘';
+      dSub.textContent = '자세한 동작 아이디어 · 절차 · 성능';
+      dBody.innerHTML = pack.html || '';
+      overlay.classList.add('show');
+    }
+    function closeDetail(){
+      overlay.classList.remove('show');
+    }
+    backBtn.addEventListener('click', closeDetail);
+    overlay.addEventListener('click', (e)=>{
+      if(e.target === overlay) closeDetail();
+    });
+    document.addEventListener('keydown', (e)=>{
+      if(e.key === 'Escape' && overlay.classList.contains('show')) closeDetail();
+    });
+  </script>
+
+  <!-- [주석단위] #_Part_01200_footer  -->
+  <footer class="site" role="contentinfo">
+    <span class="brand">AI교육연구회 : 위드석</span>
+    <span>·</span>
+    <a href="https://withseok.tistory.com/606" target="_blank" rel="noopener">위드석</a>
+    <span>·</span>
+    <a href="https://umlab.notion.site/aiers" target="_blank" rel="noopener">AI교육연구회</a>
+    <span>·</span>
+    <span>상업적 이용 금지 (Non‑Commercial Use Only)</span>
+    <span>·</span>
+    <span>ⓒ 2025 AI교육연구회 withseok. All rights reserved. (위드석)</span>
+  </footer>
+</body>
+</html>
