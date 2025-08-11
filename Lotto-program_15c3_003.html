@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>1~15 중 3개 맞추기 게임 — withSeok</title>
+
+<!-- [주석단위] #_Part_00100_import  -->
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171a2b; --muted:#9aa3b2; --text:#eef2ff; --accent:#ffd54a;
+    --good:#65d26e; --near:#ff9f43; --ball:#2a2f4a; --ball-selected:#7cc4ff; --ball-miss:#3a3f5f;
+    --shadow: 0 8px 24px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background: radial-gradient(1200px 800px at 20% -10%,#243 0%,#111 55%,#0a0b12 100%), var(--bg);
+    color:var(--text); font-family:system-ui, -apple-system, Segoe UI, Roboto, Pretendard, Noto Sans KR, sans-serif;
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  /* [주석단위] #_Part_00200_style_layout */
+  .app{ width:min(1100px, 100%); display:grid; gap:16px; grid-template-columns: 1.2fr .8fr; }
+  header{
+    grid-column:1 / -1; background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+    border:1px solid rgba(255,255,255,.06); border-radius:14px; padding:18px 20px; box-shadow:var(--shadow);
+  }
+  header h1{ margin:0 0 6px; font-size:clamp(20px,3vw,28px) }
+  header p{ margin:0; color:var(--muted); font-size:14px }
+  .panel{
+    background:var(--panel); border:1px solid rgba(255,255,255,.06);
+    border-radius:14px; padding:16px; box-shadow:var(--shadow);
+  }
+
+  /* [주석단위] #_Part_00300_style_fixedpick */
+  .fixed-pick{
+    margin-top:8px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    color:#cfd6ee; font-size:14px;
+  }
+  .badge{
+    display:inline-grid; place-items:center; min-width:34px; height:34px; padding:0 10px;
+    border-radius:999px; background:#243057; border:1px solid rgba(255,255,255,.12); font-weight:800;
+    box-shadow: inset 0 0 0 3px rgba(124,196,255,.15);
+  }
+
+  /* [주석단위] #_Part_00400_style_grid */
+  .grid{ display:grid; gap:10px; grid-template-columns: repeat(5, 1fr); }
+  .ball{
+    aspect-ratio:1/1; border-radius:50%; display:grid; place-items:center; cursor:pointer; user-select:none;
+    background:var(--ball); border:1px solid rgba(255,255,255,.08);
+    font-weight:800; font-size:clamp(18px, 3.5vw, 22px); color:#e6e9ff;
+    transition: transform .12s ease, background .2s ease, box-shadow .2s ease, color .2s ease, outline .2s ease;
+    position:relative; overflow:hidden;
+  }
+  .ball:hover{ transform: translateY(-2px) scale(1.02) }
+  .ball.selected{
+    background:var(--ball-selected); color:#06243a;
+    box-shadow: 0 0 0 3px rgba(124,196,255,.25) inset, 0 6px 18px rgba(124,196,255,.25);
+  }
+  .ball.win { background:var(--good); color:#05240e }
+  .ball.near { outline:3px dashed var(--near) }
+  .ball.fade { background:var(--ball-miss); color:#b8bfde; opacity:.85 }
+
+  /* [주석단위] #_Part_00500_style_ui */
+  .controls{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:14px }
+  button{
+    background:#1f2440; color:var(--text); border:1px solid rgba(255,255,255,.1);
+    padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:800;
+    transition: transform .06s ease, background .2s ease, box-shadow .2s ease;
+  }
+  button:hover{ transform: translateY(-1px) }
+  .primary{ background:linear-gradient(180deg, #3a7bee, #2856c8); border-color:#2b4aa3 }
+  .warn{ background:linear-gradient(180deg, #ff914d, #f26d1e); border-color:#b24b0e }
+  .ghost{ background:transparent }
+  .note{ color:var(--muted); font-size:13px }
+
+  /* [주석단위] #_Part_00600_style_stats */
+  .stats{ display:grid; gap:10px; grid-template-columns: 1fr 1fr; }
+  .stat-card{
+    background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+    border:1px solid rgba(255,255,255,.06); border-radius:12px; padding:12px 14px;
+  }
+  .stat-card h3{ margin:0; font-size:13px; color:#b8c1d9; font-weight:600 }
+  .stat-card .v{ font-size:22px; font-weight:800; margin-top:6px }
+  .row{ display:flex; gap:10px; align-items:center; justify-content:space-between }
+  .meter{ width:100%; height:10px; background:rgba(255,255,255,.08); border-radius:999px; overflow:hidden }
+  .meter > i{ display:block; height:100%; width:0%; background:linear-gradient(90deg, #ffd54a, #65d26e); transition: width .4s ease }
+
+  /* [주석단위] #_Part_00700_style_chart */
+  .chart{ width:100%; height:180px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06);
+    border-radius:12px; padding:10px; }
+  .legend{ font-size:12px; color:var(--muted); margin-top:4px }
+
+  /* [주석단위] #_Part_00800_style_fx */
+  .toast{
+    position:fixed; left:50%; top:20px; transform:translateX(-50%) translateY(-20px);
+    background:#111827; border:1px solid rgba(255,255,255,.12); color:#e5edff; padding:10px 14px; border-radius:10px;
+    box-shadow:var(--shadow); opacity:0; transition: all .35s ease; pointer-events:none; z-index:9;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0) }
+  .shake{ animation:shake .5s ease }
+  @keyframes shake{
+    10%, 90%{ transform: translateX(-1px) }
+    20%, 80%{ transform: translateX(2px) }
+    30%, 50%, 70%{ transform: translateX(-4px) }
+    40%, 60%{ transform: translateX(4px) }
+  }
+  canvas#confetti{ position:fixed; inset:0; pointer-events:none; z-index:8 }
+
+  /* [주석단위] #_Part_00900_style_responsive */
+  @media (max-width: 900px){ .app{ grid-template-columns:1fr } }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- [주석단위] #_Part_01000_header -->
+  <header aria-live="polite">
+    <h1>1~15 중 <span style="color:var(--accent)">3개</span> 맞추기 — 순서 무관</h1>
+    <p class="sub">이길 확률은 <b>1 / C(15,3) = 1 / 455 ≈ 0.22%</b>. 한 번은 우연, <i>100번</i>은 현실.</p>
+
+    <!-- 고정 표시: 선택한 3개 숫자 -->
+    <div class="fixed-pick">
+      <strong>내 선택(고정):</strong>
+      <span id="pickA" class="badge">—</span>
+      <span id="pickB" class="badge">—</span>
+      <span id="pickC" class="badge">—</span>
+    </div>
+  </header>
+
+  <!-- [주석단위] #_Part_01100_left_main -->
+  <section class="panel">
+    <h2 style="margin:0 0 10px; font-size:18px">숫자 선택</h2>
+    <div id="grid" class="grid" role="group" aria-label="숫자 1부터 15 중 3개 선택"></div>
+
+    <div class="controls" style="margin-top:14px">
+      <button id="btnDraw" class="primary" aria-label="한 번 뽑기">한 번 뽑기</button>
+      <button id="btnAuto10">빠른 10회</button>
+      <button id="btnAuto100" class="warn">폭주 100회</button>
+      <button id="btnReset" class="ghost" title="통계 초기화">통계 초기화</button>
+      <button id="btnResetAll" class="ghost" title="통계+선택 모두 초기화">모두 초기화</button>
+      <span class="note">선택: <b id="selCount">0</b>/3</span>
+    </div>
+
+    <div style="margin-top:12px" class="row">
+      <div class="stat-card" style="flex:1">
+        <h3>이번 추첨 결과</h3>
+        <div id="lastResult" class="v">—</div>
+        <div class="hint" style="color:var(--muted)">일치 숫자: <span id="lastMatches">—</span></div>
+      </div>
+      <div class="stat-card" style="flex:1">
+        <h3>운세 바 (최근 100회 평균 일치수)</h3>
+        <div class="meter" aria-label="최근 100회 평균 일치수"><i id="luckBar" style="width:0%"></i></div>
+        <div class="hint" style="color:var(--muted)">참고: 중복 금지로 단순 0.6보다 낮음</div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px" class="chart">
+      <svg id="freqChart" width="100%" height="100%" viewBox="0 0 600 180" role="img" aria-label="숫자 출현 빈도 막대그래프"></svg>
+      <div class="legend">누적 추첨에서 숫자별 출현 빈도</div>
+    </div>
+  </section>
+
+  <!-- [주석단위] #_Part_01200_right_stats -->
+  <aside class="panel">
+    <h2 style="margin:0 0 10px; font-size:18px">통계 & 안내</h2>
+    <div class="stats">
+      <div class="stat-card"><h3>총 시도</h3><div id="statPlays" class="v">0</div></div>
+      <div class="stat-card"><h3>3개 일치(잭팟)</h3><div id="statWin3" class="v">0</div></div>
+      <div class="stat-card"><h3>2개 일치(아깝!)</h3><div id="statWin2" class="v">0</div></div>
+      <div class="stat-card"><h3>1개 일치</h3><div id="statWin1" class="v">0</div></div>
+      <div class="stat-card"><h3>0개 일치</h3><div id="statWin0" class="v">0</div></div>
+      <div class="stat-card"><h3>누적 적중률</h3><div id="statRate" class="v">0%</div></div>
+    </div>
+
+    <div style="margin-top:14px; font-size:14px; color:var(--muted); line-height:1.5">
+      <p>이론 확률: <code>1 / C(15,3) = 1 / 455 ≈ 0.22%</code></p>
+
+      <!-- 필수 고정 3줄 (하이퍼링크 포함) -->
+      <p style="margin:10px 0 2px; font-size:12px; color:var(--muted);">ⓒ 2025 AI교육연구회 withseok. All rights reserved. (위드석)</p>
+      <p style="margin:0 0 6px; font-size:12px; color:var(--muted);">상업적 이용금지</p>
+      <p style="margin:0; font-size:13px;">
+        <a href="https://umlab.notion.site/aiers" target="_blank" style="color:var(--accent); text-decoration:none;">AI교육연구회</a> :
+        <a href="https://withseok.tistory.com/606" target="_blank" style="color:var(--accent); text-decoration:none;">위드석</a>
+      </p>
+    </div>
+  </aside>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<canvas id="confetti"></canvas>
+
+<!-- [주석단위] #_Part_01300_script_utils -->
+<script>
+(function(){
+  'use strict';
+
+  /* ===== 유틸 ===== */
+  const $ = (q,el=document)=>el.querySelector(q);
+  const $$ = (q,el=document)=>[...el.querySelectorAll(q)];
+  const randInt = (min,max)=>Math.floor(Math.random()*(max-min+1))+min;
+
+  /* ===== 상수 ===== */
+  const NUMBERS = 15;
+  const PICK = 3;
+  function comb(n,k){ let num=1, den=1; for(let i=1;i<=k;i++){ num*=(n-(i-1)); den*=i; } return num/den; }
+  const EXPECTED_P = 1/comb(NUMBERS,PICK); // 1/455
+
+  /* [주석단위] #_Part_01400_state */
+  const state = {
+    selected: new Set(),
+    plays: 0,
+    win3: 0, win2: 0, win1: 0, win0: 0,
+    recentMatches: [], // 최근 100회
+    freq: Array(NUMBERS).fill(0)
+  };
+
+  /* [주석단위] #_Part_01500_init_grid */
+  const gridEl = $('#grid');
+  for(let n=1;n<=NUMBERS;n++){
+    const b=document.createElement('button');
+    b.className='ball'; b.type='button'; b.dataset.n=n; b.textContent=n;
+    b.setAttribute('aria-pressed','false');
+    b.addEventListener('click', ()=>toggleSelect(n,b));
+    gridEl.appendChild(b);
+  }
+
+  function toggleSelect(n, el){
+    if(state.selected.has(n)){
+      state.selected.delete(n);
+      el.classList.remove('selected'); el.setAttribute('aria-pressed','false');
+    }else{
+      if(state.selected.size>=PICK){ toast('3개까지만 선택할 수 있어요.'); return; }
+      state.selected.add(n);
+      el.classList.add('selected'); el.setAttribute('aria-pressed','true');
+    }
+    updatePickFixed();
+    $('#selCount').textContent = state.selected.size;
+  }
+
+  /* [주석단위] #_Part_01600_buttons */
+  $('#btnDraw').addEventListener('click', async ()=>{
+    if(state.selected.size!==PICK){ toast('숫자 3개를 먼저 선택해 주세요!'); return; }
+    await singleDraw(true);
+  });
+  $('#btnAuto10').addEventListener('click', async ()=>{
+    if(state.selected.size!==PICK){ toast('숫자 3개를 먼저 선택해 주세요!'); return; }
+    await autoPlays(10);
+  });
+  $('#btnAuto100').addEventListener('click', async ()=>{
+    if(state.selected.size!==PICK){ toast('숫자 3개를 먼저 선택해 주세요!'); return; }
+    await autoPlays(100);
+  });
+
+  // 통계만 초기화(선택 유지)
+  $('#btnReset').addEventListener('click', ()=>{
+    Object.assign(state, {
+      selected: new Set(state.selected),
+      plays:0, win3:0, win2:0, win1:0, win0:0,
+      recentMatches:[],
+      freq:Array(NUMBERS).fill(0)
+    });
+    updateStats(); renderChart();
+    $('#lastResult').textContent='—'; $('#lastMatches').textContent='—';
+    $$('.ball', gridEl).forEach(el=>el.classList.remove('win','fade','near'));
+    toast('통계를 초기화했어요. 선택은 유지됩니다.');
+  });
+
+  // 선택+통계 모두 초기화
+  $('#btnResetAll').addEventListener('click', ()=>{
+    state.selected.clear();
+    $$('.ball', gridEl).forEach(el=>{
+      el.classList.remove('selected','win','fade','near');
+      el.setAttribute('aria-pressed','false');
+    });
+    $('#selCount').textContent=0; updatePickFixed();
+    Object.assign(state, { selected:new Set(), plays:0, win3:0, win2:0, win1:0, win0:0, recentMatches:[], freq:Array(NUMBERS).fill(0) });
+    updateStats(); renderChart();
+    $('#lastResult').textContent='—'; $('#lastMatches').textContent='—';
+    toast('선택과 통계를 모두 초기화했어요.');
+  });
+
+  /* [주석단위] #_Part_01700_draw_logic */
+  async function singleDraw(animated){
+    const draw = uniqueRandomSet(1, NUMBERS, PICK);
+    draw.forEach(n => state.freq[n-1]++);
+    highlightResult(draw, animated);
+    const match = countMatches(draw, state.selected);
+    recordMatch(match);
+    updateStats(); renderChart();
+    if(match===3){ confettiBurst(); toast('잭팟! 3개 전부 일치 🎉'); }
+    else if(match===2){ pulseNear(); toast('아깝다! 2개 일치 😮'); }
+    else if(match===1){ toast('1개 일치 🙂'); }
+    else { toast('꽝! 다음 기회에…'); }
+    $('#lastResult').textContent = [...draw].sort((a,b)=>a-b).join(', ');
+    $('#lastMatches').textContent = match>0 ? [...intersection(draw, state.selected)].sort((a,b)=>a-b).join(', ') : '없음';
+    return match;
+  }
+
+  async function autoPlays(n){
+    for(let i=0;i<n;i++){
+      const match = await singleDraw(false);
+      // 잭팟이면 중간 확인
+      if(match===3 && i < n-1){
+        const remain = n-(i+1);
+        const msg = `${String(i+1).padStart(3,'0')}회에 3개 번호 당첨 되었습니다.\n남은 ${String(remain).padStart(2,'0')}회를 계속 진행할까요?`;
+        if(!confirm(msg)) break;
+      }
+      await delay(25);
+    }
+    pulseNear();
+  }
+
+  /* [주석단위] #_Part_01800_helpers */
+  function uniqueRandomSet(min,max,k){ const s=new Set(); while(s.size<k){ s.add(randInt(min,max)); } return s; }
+  function countMatches(setA, setB){ let c=0; setA.forEach(v=>{ if(setB.has(v)) c++; }); return c; }
+  function intersection(setA, setB){ const r=new Set(); setA.forEach(v=>{ if(setB.has(v)) r.add(v); }); return r; }
+  const delay = (ms)=>new Promise(res=>setTimeout(res,ms));
+
+  /* [주석단위] #_Part_01900_fx */
+  function highlightResult(draw, animated){
+    $$('.ball', gridEl).forEach(el=>el.classList.remove('win','fade','near'));
+    $$('.ball', gridEl).forEach(el=>{
+      const n=+el.dataset.n;
+      if(draw.has(n)) el.classList.add('win'); else el.classList.add('fade');
+    });
+    state.selected.forEach(n=>{
+      if(draw.has(n)){ $(`.ball[data-n="${n}"]`, gridEl).classList.add('near'); }
+    });
+    if(animated){
+      draw.forEach(n=>{
+        const el = $(`.ball[data-n="${n}"]`, gridEl);
+        el.animate([{transform:'scale(0.6)'},{transform:'scale(1)'}], {duration:220, easing:'ease-out'});
+      });
+    }
+  }
+
+  const toastEl = $('#toast'); let toastTimer;
+  function toast(msg){ clearTimeout(toastTimer); toastEl.textContent=msg; toastEl.classList.add('show'); toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1600); }
+  function pulseNear(){ $('.panel').classList.add('shake'); setTimeout(()=>$('.panel').classList.remove('shake'), 500); }
+
+  // 컨페티
+  const canvas = $('#confetti'); const ctx = canvas.getContext('2d'); let particles=[]; let rafId=null;
+  function resizeCanvas(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
+  window.addEventListener('resize', resizeCanvas); resizeCanvas();
+  function confettiBurst(){
+    const colors=['#ffd54a','#65d26e','#7cc4ff','#ff9f43','#ef6b6b','#e3d1ff','#c3f0ca'];
+    for(let i=0;i<140;i++){
+      particles.push({ x: canvas.width/2, y: 120, vx:(Math.random()-0.5)*6, vy:Math.random()*-6-3, g:0.15+Math.random()*0.1, s:3+Math.random()*3, a:1, c:colors[i%colors.length], r:Math.random()*Math.PI });
+    }
+    if(!rafId) animateConfetti();
+  }
+  function animateConfetti(){
+    rafId = requestAnimationFrame(animateConfetti);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles.forEach(p=>{ p.vy+=p.g; p.x+=p.vx; p.y+=p.vy; p.r+=0.1; p.a-=0.008; });
+    particles = particles.filter(p=>p.a>0 && p.y<canvas.height+20);
+    particles.forEach(p=>{ ctx.save(); ctx.globalAlpha=Math.max(0,p.a); ctx.translate(p.x,p.y); ctx.rotate(p.r); ctx.fillStyle=p.c; ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s); ctx.restore(); });
+    if(particles.length===0){ cancelAnimationFrame(rafId); rafId=null; }
+  }
+
+  /* [주석단위] #_Part_02000_chart_stats_pick */
+  const chart = $('#freqChart');
+  function renderChart(){
+    const W=600,H=180,pad=24, innerW=W-pad*2, innerH=H-pad*2;
+    const max=Math.max(1, ...state.freq);
+    const barW=innerW/NUMBERS*0.66, gap=innerW/NUMBERS-barW;
+    let svg = `<rect x="0" y="0" width="${W}" height="${H}" fill="transparent" />`;
+    svg += `<line x1="${pad}" y1="${H-pad}" x2="${W-pad}" y2="${H-pad}" stroke="rgba(255,255,255,.2)" />`;
+    for(let i=0;i<NUMBERS;i++){
+      const x=pad+i*(barW+gap);
+      const h=(state.freq[i]/max)*(innerH-10);
+      const y=H-pad-h;
+      const col = `hsl(${(i/NUMBERS)*320},70%,60%)`;
+      svg+=`<rect rx="4" ry="4" x="${x}" y="${y}" width="${barW}" height="${h}" fill="${col}"></rect>`;
+      svg+=`<text x="${x+barW/2}" y="${H-6}" text-anchor="middle" font-size="10" fill="#9aa3b2">${i+1}</text>`;
+    }
+    chart.innerHTML=svg;
+  }
+
+  function recordMatch(m){
+    state.plays++;
+    if(m===3) state.win3++; else if(m===2) state.win2++; else if(m===1) state.win1++; else state.win0++;
+    state.recentMatches.push(m); if(state.recentMatches.length>100) state.recentMatches.shift();
+  }
+
+  function updateStats(){
+    $('#statPlays').textContent=state.plays;
+    $('#statWin3').textContent=state.win3;
+    $('#statWin2').textContent=state.win2;
+    $('#statWin1').textContent=state.win1;
+    $('#statWin0').textContent=state.win0;
+    const rate = state.plays ? (state.win3/state.plays*100) : 0;
+    $('#statRate').textContent = `${rate.toFixed(2)}% (이론 ${(EXPECTED_P*100).toFixed(2)}%)`;
+
+    const avg = state.recentMatches.length ? (state.recentMatches.reduce((a,b)=>a+b,0)/state.recentMatches.length) : 0;
+    $('#luckBar').style.width = `${Math.min(100, Math.max(0, (avg/3)*100))}%`;
+  }
+
+  function updatePickFixed(){
+    const arr = [...state.selected].sort((a,b)=>a-b);
+    const slots = [$('#pickA'), $('#pickB'), $('#pickC')];
+    for(let i=0;i<3;i++){ slots[i].textContent = (arr[i] ?? '—'); }
+  }
+
+  /* [주석단위] #_Part_02100_boot */
+  function init(){
+    renderChart(); updateStats(); updatePickFixed();
+    toast('숫자 3개를 선택해 시작하세요!');
+  }
+  init();
+
+  // 접근성: 키보드 선택
+  gridEl.addEventListener('keydown',(e)=>{
+    const t=e.target; if(!t.classList.contains('ball')) return;
+    if(e.key===' '||e.key==='Enter'){ e.preventDefault(); toggleSelect(+t.dataset.n, t); }
+  });
+
+})();
+</script>
+</body>
+</html>
