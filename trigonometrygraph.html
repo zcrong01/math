@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>삼각함수 그래프 탐험기_AI교육연구회_위드석</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1em;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 30px;
+            align-items: start;
+        }
+
+        .graph-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            border: 2px solid #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .control-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .equation-display {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .control-value {
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .control-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .control-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .control-btn:active {
+            transform: translateY(0);
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .action-btn {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        .action-btn.animate {
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+        }
+
+        .action-btn.animate:hover {
+            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+        }
+
+        .description {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #7f8c8d;
+            line-height: 1.6;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 삼각함수 그래프 탐험기 _AI교육연구회:위드석</h1>
+            <p>y = a·sin(b(x - c)) + d 함수의 각 변수를 조작하며 그래프 변화를 관찰해보세요</p>
+        </div>
+
+        <div class="main-content">
+            <div class="graph-section">
+                <div class="canvas-container">
+                    <canvas id="graphCanvas"></canvas>
+                </div>
+                <div class="description">
+                    <strong>📊 그래프 해석 가이드:</strong><br>
+                    • <strong>a (진폭)</strong>: 그래프의 최대 높이를 조절합니다<br>
+                    • <strong>b (주기)</strong>: 파형의 반복 간격을 조절합니다<br>
+                    • <strong>c (위상이동)</strong>: 그래프를 좌우로 π/12 단위(15도)씩 이동시킵니다<br>
+                    • <strong>d (수직이동)</strong>: 전체 그래프를 상하로 이동시킵니다
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="equation-display" id="equation">
+                    y = 1·sin(1(x - 0)) + 0
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>📏 진폭 (a)</span>
+                        <span class="control-value" id="aValue">1.0</span>
+                    </div>
+                    <div class="control-buttons">
+                        <button class="control-btn" onclick="changeParameter('a', -0.1)">−</button>
+                        <button class="control-btn" onclick="changeParameter('a', 0.1)">+</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>🔄 주기 계수 (b)</span>
+                        <span class="control-value" id="bValue">1.0</span>
+                    </div>
+                    <div class="control-buttons">
+                        <button class="control-btn" onclick="changeParameter('b', -0.1)">−</button>
+                        <button class="control-btn" onclick="changeParameter('b', 0.1)">+</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>↔️ 위상이동 (c)</span>
+                        <span class="control-value" id="cValue">0</span>
+                    </div>
+                    <div class="control-buttons">
+                        <button class="control-btn" onclick="changeParameter('c', -Math.PI/12)">−</button>
+                        <button class="control-btn" onclick="changeParameter('c', Math.PI/12)">+</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>↕️ 수직이동 (d)</span>
+                        <span class="control-value" id="dValue">0.0</span>
+                    </div>
+                    <div class="control-buttons">
+                        <button class="control-btn" onclick="changeParameter('d', -0.5)">−</button>
+                        <button class="control-btn" onclick="changeParameter('d', 0.5)">+</button>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="resetParameters()">🔄 초기화</button>
+                    <button class="action-btn animate" id="animateBtn" onclick="toggleAnimation()">▶️ 애니메이션</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 그래프 변수들
+        let a = 1, b = 1, c = 0, d = 0;
+        let canvas, ctx;
+        let animationId = null;
+        let isAnimating = false;
+        let animationTime = 0;
+
+        // 초기화
+        window.onload = function() {
+            canvas = document.getElementById('graphCanvas');
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+            drawGraph();
+            updateDisplay();
+            
+            window.addEventListener('resize', resizeCanvas);
+        };
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth * 2; // 고해상도를 위한 배율
+            canvas.height = container.clientHeight * 2;
+            canvas.style.width = container.clientWidth + 'px';
+            canvas.style.height = container.clientHeight + 'px';
+            ctx.scale(2, 2); // 스케일 조정
+            drawGraph();
+        }
+
+        function changeParameter(param, delta) {
+            switch(param) {
+                case 'a':
+                    a = Math.max(-5, Math.min(5, a + delta));
+                    break;
+                case 'b':
+                    b = Math.max(0.1, Math.min(5, b + delta));
+                    break;
+                case 'c':
+                    c += delta;
+                    break;
+                case 'd':
+                    d = Math.max(-3, Math.min(3, d + delta));
+                    break;
+            }
+            updateDisplay();
+            drawGraph();
+        }
+
+        function resetParameters() {
+            a = 1; b = 1; c = 0; d = 0;
+            updateDisplay();
+            drawGraph();
+        }
+
+        function toggleAnimation() {
+            const btn = document.getElementById('animateBtn');
+            if (isAnimating) {
+                cancelAnimationFrame(animationId);
+                isAnimating = false;
+                btn.textContent = '▶️ 애니메이션';
+                btn.classList.add('animate');
+            } else {
+                isAnimating = true;
+                btn.textContent = '⏸️ 정지';
+                btn.classList.remove('animate');
+                animate();
+            }
+        }
+
+        function animate() {
+            if (!isAnimating) return;
+            
+            animationTime += 0.02;
+            c = animationTime;
+            updateDisplay();
+            drawGraph();
+            
+            animationId = requestAnimationFrame(animate);
+        }
+
+        function updateDisplay() {
+            // 값 표시 업데이트
+            document.getElementById('aValue').textContent = a.toFixed(1);
+            document.getElementById('bValue').textContent = b.toFixed(1);
+            
+            // c 값을 π 단위로 표시
+            const cInPi = c / Math.PI;
+            let cDisplay;
+            if (Math.abs(cInPi) < 0.01) {
+                cDisplay = '0';
+            } else if (Math.abs(cInPi - 1) < 0.01) {
+                cDisplay = 'π';
+            } else if (Math.abs(cInPi + 1) < 0.01) {
+                cDisplay = '-π';
+            } else if (Math.abs(cInPi - 0.5) < 0.01) {
+                cDisplay = 'π/2';
+            } else if (Math.abs(cInPi + 0.5) < 0.01) {
+                cDisplay = '-π/2';
+            } else {
+                const fraction = cInPi.toFixed(2);
+                cDisplay = fraction + 'π';
+            }
+            document.getElementById('cValue').textContent = cDisplay;
+            document.getElementById('dValue').textContent = d.toFixed(1);
+
+            // 수식 업데이트
+            let equation = 'y = ';
+            equation += (a === 1 ? '' : (a === -1 ? '-' : a.toFixed(1))) + 'sin(';
+            equation += (b === 1 ? '' : b.toFixed(1)) + '(x';
+            equation += (c === 0 ? '' : (c > 0 ? ' - ' + cDisplay : ' + ' + cDisplay.replace('-', ''))) + ')';
+            equation += ')';
+            equation += (d === 0 ? '' : (d > 0 ? ' + ' + d.toFixed(1) : ' - ' + Math.abs(d).toFixed(1)));
+            
+            document.getElementById('equation').textContent = equation;
+        }
+
+        function drawGraph() {
+            const width = canvas.width / 2;
+            const height = canvas.height / 2;
+            
+            // 캔버스 클리어
+            ctx.clearRect(0, 0, width, height);
+            
+            // 배경 그라디언트
+            const gradient = ctx.createLinearGradient(0, 0, width, height);
+            gradient.addColorStop(0, '#f8f9fa');
+            gradient.addColorStop(1, '#e9ecef');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+            
+            // 좌표계 설정
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const scaleX = width / (4 * Math.PI); // -2π ~ 2π
+            const scaleY = height / 8; // -4 ~ 4
+            
+            // 격자 그리기
+            ctx.strokeStyle = '#dee2e6';
+            ctx.lineWidth = 1;
+            
+            // 세로 격자 (π/12 단위)
+            for (let i = -24; i <= 24; i++) {
+                const x = centerX + i * (Math.PI / 12) * scaleX;
+                if (x >= 0 && x <= width) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, height);
+                    ctx.stroke();
+                }
+            }
+            
+            // 가로 격자
+            for (let i = -4; i <= 4; i++) {
+                const y = centerY - i * scaleY / 2;
+                if (y >= 0 && y <= height) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(width, y);
+                    ctx.stroke();
+                }
+            }
+            
+            // 축 그리기
+            ctx.strokeStyle = '#495057';
+            ctx.lineWidth = 2;
+            
+            // x축
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(width, centerY);
+            ctx.stroke();
+            
+            // y축
+            ctx.beginPath();
+            ctx.moveTo(centerX, 0);
+            ctx.lineTo(centerX, height);
+            ctx.stroke();
+            
+            // 축 라벨
+            ctx.fillStyle = '#495057';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            
+            // x축 라벨 (π 단위)
+            const piPositions = [-2, -1, 0, 1, 2];
+            piPositions.forEach(i => {
+                const x = centerX + i * Math.PI * scaleX;
+                if (x >= 0 && x <= width) {
+                    const label = i === 0 ? '0' : (i === 1 ? 'π' : (i === -1 ? '-π' : i + 'π'));
+                    ctx.fillText(label, x, centerY + 20);
+                }
+            });
+            
+            // y축 라벨
+            ctx.textAlign = 'right';
+            for (let i = -3; i <= 3; i++) {
+                if (i !== 0) {
+                    const y = centerY - i * scaleY / 2;
+                    if (y >= 10 && y <= height - 10) {
+                        ctx.fillText(i.toString(), centerX - 10, y + 4);
+                    }
+                }
+            }
+            
+            // 함수 그래프 그리기
+            ctx.strokeStyle = '#667eea';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            let firstPoint = true;
+            for (let px = 0; px <= width; px += 1) {
+                const x = (px - centerX) / scaleX;
+                const y = a * Math.sin(b * (x - c)) + d;
+                const py = centerY - y * scaleY / 2;
+                
+                if (py >= -10 && py <= height + 10) { // 화면 범위 체크
+                    if (firstPoint) {
+                        ctx.moveTo(px, py);
+                        firstPoint = false;
+                    } else {
+                        ctx.lineTo(px, py);
+                    }
+                }
+            }
+            ctx.stroke();
+            
+            // 특수점 표시 (c 위치)
+            if (Math.abs(c) > 0.01) {
+                const cX = centerX + c * scaleX;
+                const cY = centerY - d * scaleY / 2;
+                
+                if (cX >= 0 && cX <= width) {
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.beginPath();
+                    ctx.arc(cX, cY, 4, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    // 위상 이동 표시선
+                    ctx.strokeStyle = '#e74c3c';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]);
+                    ctx.beginPath();
+                    ctx.moveTo(cX, 0);
+                    ctx.lineTo(cX, height);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
