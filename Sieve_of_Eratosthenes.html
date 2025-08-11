@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>에라토스테네스의 체 (1~200)</title>
+
+  <style>
+    :root{
+      --bg-grad: radial-gradient(1200px 800px at 20% 10%, #ffeaea 0%, transparent 40%),
+                  radial-gradient(1000px 700px at 85% 15%, #e9f4ff 0%, transparent 45%),
+                  radial-gradient(900px 900px at 50% 90%, #eaf9f0 0%, transparent 50%),
+                  linear-gradient(180deg, #ffffff, #f8fbff);
+      --fg:#111; --muted:#6b7280; --accent:#6a5cff;
+      --grid-gap:10px; --cell-pad:4px;
+      --sep-color:#8aa0ff; --sep-shadow:#6a5cff33;
+      --card:#ffffffd9; --card-border:#e5e7eb;
+      --one-bg:#000; --one-fg:#fff;
+      --alive-border:#e5e7eb;
+      --dead-fg:#cbd5e1; --dead-bg:#f3f4f6; --dead-opacity:.45;
+      --btn-grad: linear-gradient(135deg,#8a7dff,#5ad1ff);
+      --btn-grad-2: linear-gradient(135deg,#ff7dc0,#ffd36a);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
+    body{background:var(--bg-grad); color:var(--fg); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+
+    a{color:#4f46e5;text-decoration:none}
+    a:hover{text-decoration:underline}
+
+    .app{min-height:100%;display:flex;flex-direction:column}
+    .top{display:flex;align-items:center;gap:.6rem;padding:.8rem 1rem}
+    .linkbar a{background:#ffffffaa; padding:.25rem .5rem; border-radius:.6rem; box-shadow:0 2px 10px rgba(0,0,0,.05)}
+    .spacer{flex:1}
+
+.title-box {
+  text-align: center;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.title-box h1 {
+  font-size: clamp(1.6rem, 2.5vw, 2.4rem);
+  font-weight: 800;
+  margin: 0;
+  color: #1e293b; /* 진한 네이비 톤 */
+}
+
+.title-box h2 {
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  font-weight: 500;
+  margin: 0.2rem 0 0;
+  color: #475569; /* 차분한 회색 */
+}
+
+
+    .info-bar{display:flex;align-items:center;gap:.8rem;justify-content:space-between;padding:.4rem 1rem}
+    .msg{font-style:italic;min-height:1.6rem;color:#7c3aed}
+    .controls{display:flex;gap:.5rem}
+    button{
+      padding:.55rem .9rem;border-radius:10px;border:1px solid #0000;cursor:pointer;
+      color:#fff;font-weight:700;letter-spacing:.2px;box-shadow:0 6px 20px rgba(0,0,0,.08);
+      transition:.15s transform ease, .15s box-shadow ease, .15s filter ease;
+    }
+    button.primary{background:var(--btn-grad)}
+    button.secondary{background:var(--btn-grad-2)}
+    button:hover{transform:translateY(-1px); filter:saturate(1.05); box-shadow:0 10px 26px rgba(0,0,0,.12)}
+    button:active{transform:translateY(0)}
+
+    /* 중앙 배치 카드 컨테이너 */
+    .stage{flex:1; display:flex; align-items:center; justify-content:center; padding:1rem}
+    .card{
+      width:min(1200px, 95vw);
+      background:var(--card); border:1px solid var(--card-border);
+      border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.06);
+      backdrop-filter: blur(6px);
+      display:flex; flex-direction:column;
+    }
+
+    .grid-wrap{
+      flex:1; display:flex; align-items:center; justify-content:center;
+      gap:24px; padding:1rem;
+    }
+    .region{
+      display:grid; grid-template-columns:repeat(10, minmax(3ch, 1fr));
+      gap:var(--grid-gap); align-content:center; justify-items:stretch;
+    }
+    .v-sep{align-self:stretch; width:0; border-left:4px solid var(--sep-color); box-shadow: -2px 0 18px var(--sep-shadow); border-radius:2px; margin:0 4px}
+
+    /* ===== 살아있는(대기) 숫자: 처음부터 선명한 파스텔 ===== */
+    .cell{
+      user-select:none; padding:var(--cell-pad); text-align:center; cursor:pointer;
+      font-family:ui-monospace,Consolas,monospace; font-weight:700; letter-spacing:.3px;
+      border:1px solid var(--alive-border); border-radius:10px; background:#fff;
+      transition: .12s transform ease, .12s filter ease, .12s box-shadow ease, .12s opacity ease;
+      box-shadow:0 2px 6px rgba(0,0,0,.05), 0 10px 22px rgba(0,0,0,.06);
+    }
+    .cell:hover{ transform:translateY(-1px) }
+
+    /* 파스텔 테마 6종(번호별 고정) */
+    .c0{ background: #fff6f0; color:#b45309 }    /* 오렌지 */
+    .c1{ background: #f0f9ff; color:#075985 }    /* 블루 */
+    .c2{ background: #f0fff7; color:#065f46 }    /* 그린 */
+    .c3{ background: #fdf2f8; color:#9d174d }    /* 핑크 */
+    .c4{ background: #f5f3ff; color:#5b21b6 }    /* 퍼플 */
+    .c5{ background: #fff7ed; color:#92400e }    /* 앰버 */
+
+    /* 1 전용 스타일(항상 뚜렷) */
+    .cell.one{ background:var(--one-bg) !important; color:var(--one-fg) !important }
+
+    /* 지워진 숫자(배수): 아주 옅고 반투명 */
+    .cell.gray{
+      color:var(--dead-fg) !important; background:var(--dead-bg) !important;
+      opacity: var(--dead-opacity); filter: grayscale(.35);
+      box-shadow:none; border-color:#ececec;
+    }
+
+    /* 클릭한 소수만 노란 하이라이트 (살아있는 기본색은 유지) */
+    .cell.prime{ background:#fff2a0 !important; outline:2px solid #ffd24a66; }
+
+    .bottom{padding:.8rem 1rem; text-align:center; font-size:.9rem; color:#334155}
+
+    /* Dialog */
+    dialog{border:none;border-radius:14px; padding:0; box-shadow:0 18px 60px rgba(0,0,0,.25); max-width:480px; width:min(92vw, 480px)}
+    .dlg{padding:1.1rem}
+    .dlg h3{margin:.3rem 0 .8rem; letter-spacing:.2px}
+    .row{display:flex;gap:.6rem;align-items:center;margin:.6rem 0}
+    .row input[type="number"]{width:12rem;padding:.6rem .7rem;font-size:1rem;border-radius:10px;border:1px solid #e5e7eb}
+    .hint{font-size:.85rem; color:#6b7280}
+    .err{color:#dc2626;min-height:1.2rem;font-size:.9rem;margin-top:.2rem}
+    .actions{display:flex;gap:.6rem;justify-content:flex-end;margin-top:.8rem}
+
+    /* 텍스트(결과) 영역: 자동 줄바꿈 */
+    .text-mode{display:none; padding:1rem}
+    .out{
+      background:#fff; border:1px solid #e5e7eb; border-radius:12px;
+      padding:1rem; min-height:48vh; max-height:65vh; overflow:auto;
+      font-family:ui-monospace,Consolas,monospace; line-height:1.5;
+      white-space:normal; word-break:break-word;
+      box-shadow:0 8px 22px rgba(0,0,0,.08);
+    }
+  </style>
+
+  <script>
+    window.APP_CONFIG = {
+      expireDate: '2025-08-30',
+      links: [
+        ["AI교육연구회","https://umlab.notion.site/aiers"],
+        ["위드석","https://withseok.tistory.com/606"],
+        ["[상업적 이용금지!!]","https://withseok.tistory.com/1838"]
+      ],
+      milestones: {
+        50 : {msg:"50 돌파! 계속 힘내세요!", color:"#ef4444"},
+        100: {msg:"100 이하 소수 완료! 멋져요!", color:"#3b82f6"},
+        150: {msg:"150 이하 단계 통과! 잘하고 있어요!", color:"#10b981"},
+        200: {msg:"200 이하 완료! 거의 끝났어요!", color:"#8b5cf6"}
+      },
+      linkify: [
+        {text:"위드석", url:"https://withseok.tistory.com/606"},
+        {text:"AI교육연구회", url:"https://umlab.notion.site/aiers"}
+      ],
+      MAX_LIMIT: 10000000,
+      TEXT_ANIM_MS: 3000   // 결과 출력 총 소요시간 목표(약 3초)
+    };
+  </script>
+</head>
+
+<body>
+  <div class="app" id="app">
+    <div class="top linkbar" id="linkbar"></div>
+
+    <div class="title-box">
+      <h1>에라토스테네스의 체</h1>
+      <h2>Sieve_of_Eratosthenes  :  created by withSeok</h2>
+    </div>
+	
+
+
+    <div class="info-bar">
+      <div class="msg" id="msg"></div>
+      <div class="controls">
+        <button id="btnOpenRange" class="primary">범위로 소수 찾기</button>
+      </div>
+      <div class="spacer"></div>
+      <div class="info" id="info">다음 클릭할 소수: 2</div>
+    </div>
+
+    <div class="stage">
+      <div class="card">
+        <div class="grid-wrap" id="gridWrap">
+          <div class="region" id="region1"></div>
+          <div class="v-sep" aria-hidden="true"></div>
+          <div class="region" id="region2"></div>
+        </div>
+
+        <div class="text-mode" id="textMode">
+          <div style="display:flex; gap:.6rem; justify-content:center; padding:.4rem 1rem 1rem 1rem;">
+            <button id="btnRange" class="primary">범위로 소수 찾기</button>
+            <button id="btnReset" class="secondary">에라토스테네스의 체 다시하기</button>
+          </div>
+          <div class="out" id="outArea"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom">ⓒ 2025 AI교육연구회 withseok. All rights reserved. (위드석)</div>
+  </div>
+
+  <dialog id="rangeDlg">
+    <form method="dialog" class="dlg" id="dlgForm">
+      <h3>어디까지 소수를 찾아볼까요?</h3>
+      <div class="row">
+        <label for="limitInput" class="muted">상한(정수)</label>
+        <input id="limitInput" type="number" inputmode="numeric" value="1000" min="2" step="1" />
+      </div>
+      <div class="hint">※ 1천만(10,000,000)까지 자동 계산을 지원합니다.</div>
+      <div class="err" id="err"></div>
+      <div class="actions">
+        <button type="button" id="btnCancel">취소</button>
+        <button type="submit" class="primary" id="btnOk">확인</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    // --- 만료 ---
+    const parseYMD = s => { const [y,m,d]=s.split('-').map(Number); return new Date(y, m-1, d); };
+    const todayYMD = () => { const t=new Date(); return new Date(t.getFullYear(),t.getMonth(),t.getDate()); };
+    (function expiryGuard(cfg){
+      if (todayYMD() > parseYMD(cfg.expireDate)){
+        alert('프로그램 유효기간이 만료되었습니다.\n최신 정보를 보려면 확인을 눌러주세요.');
+        window.open('https://withseok.tistory.com/1838', '_blank');
+      }
+    })(window.APP_CONFIG);
+
+    // --- 소수 체 ---
+    function computePrimes(n){
+      const sieve = new Uint8Array(n+1);
+      sieve.fill(1,2);
+      for(let p=2; p*p<=n; p++) if (sieve[p]) for(let k=p*p; k<=n; k+=p) sieve[k]=0;
+      return sieve;
+    }
+
+    // --- 상태/DOM ---
+    const LIMIT_STAGE = 200;
+    const sieve200 = computePrimes(LIMIT_STAGE);
+    const primes200 = Array.from({length:LIMIT_STAGE-1}, (_,i)=>i+2).filter(i => sieve200[i]);
+    const MILESTONES = window.APP_CONFIG.milestones;
+
+    const state = { clicked:new Set(), gray:new Set(), milestonesReached:new Set(), labels:new Map() };
+
+    const linkbar = document.getElementById('linkbar');
+    const infoEl = document.getElementById('info');
+    const msgEl = document.getElementById('msg');
+    const gridWrap = document.getElementById('gridWrap');
+    const region1 = document.getElementById('region1');
+    const region2 = document.getElementById('region2');
+
+    const textMode = document.getElementById('textMode');
+    const outArea = document.getElementById('outArea');
+
+    const btnOpenRange = document.getElementById('btnOpenRange');
+    const btnRange = document.getElementById('btnRange');
+    const btnReset = document.getElementById('btnReset');
+
+    const rangeDlg = document.getElementById('rangeDlg');
+    const limitInput = document.getElementById('limitInput');
+    const errLabel = document.getElementById('err');
+    const btnCancel = document.getElementById('btnCancel');
+    const dlgForm = document.getElementById('dlgForm');
+
+    // 링크 표시
+    (function renderLinks(){
+      window.APP_CONFIG.links.forEach(([txt,url],i)=>{
+        const a = document.createElement('a'); a.href=url; a.target="_blank"; a.textContent=txt;
+        linkbar.appendChild(a);
+        const gap = document.createElement('span'); gap.textContent = i===0 ? ' : ' : ' ';
+        linkbar.appendChild(gap);
+      });
+    })();
+
+    // 그리드 구성
+    function colorClass(num){ return 'c' + (num % 6); }
+    function makeCell(num){
+      const div = document.createElement('div');
+      div.className = 'cell ' + (num===1 ? 'one' : colorClass(num));
+      div.textContent = String(num).padStart(3,' ');
+      div.style.fontSize = 'clamp(12px, 1.6vw, 22px)';
+      div.addEventListener('click',()=>onNumClick(num, div));
+      state.labels.set(num, div);
+      return div;
+    }
+    function buildGrid(){
+      for(let i=1;i<=100;i++) region1.appendChild(makeCell(i));
+      for(let i=101;i<=200;i++) region2.appendChild(makeCell(i));
+      updateInfo();
+    }
+    buildGrid();
+
+    // 진행/마일스톤
+    function nextPrime(){
+      for (let p of primes200) if (!state.clicked.has(p)) return p;
+      return null;
+    }
+    function updateInfo(){ infoEl.textContent = '다음 클릭할 소수: ' + (nextPrime() ?? '끝'); }
+    function showMilestones(){
+      const keys = Object.keys(MILESTONES).map(Number).sort((a,b)=>a-b);
+      for (const m of keys){
+        const need = primes200.filter(p=>p<=m);
+        if (!state.milestonesReached.has(m) && need.every(p=>state.clicked.has(p))){
+          const {msg,color}=MILESTONES[m];
+          msgEl.textContent = msg; msgEl.style.color = color;
+          state.milestonesReached.add(m);
+        }
+      }
+    }
+
+    // 지우기
+    function grayOut(num){
+      const el = state.labels.get(num);
+      if (!el || el.classList.contains('gray')) return;
+      el.classList.add('gray');
+      state.gray.add(num);
+    }
+
+    // √LIMIT 이후 소수 클릭 시 안내 팝업
+    function showBeyondInfo(p){
+      const LIMIT = LIMIT_STAGE;
+      const ex = [];
+      for (const q of primes200){
+        if (q < p) continue;
+        const prod = p * q;
+        if (prod > LIMIT){
+          ex.push(`${p} × ${q} = ${prod}`);
+          if (ex.length >= 10) break;
+        }
+      }
+      const msg = [
+        `이제 ${p} 이상의 소수는 1~${LIMIT} 범위에서`,
+        `새로운 수를 더 지우지 않습니다.`,
+        ``,
+        `예시)`,
+        ...ex
+      ].join('\n');
+      alert(msg);
+    }
+
+    // 클릭 로직
+    function onNumClick(num, el){
+      if (num===1){
+        alert('1은 소수가 아니라, 자연수를 만드는 기초수라고 명칭함.');
+        return;
+      }
+      if (state.gray.has(num)) return;
+      if (!sieve200[num]){ alert(`${num}은 소수가 아닙니다`); return; }
+      const want = nextPrime();
+      if (num !== want){ alert(`다음에 클릭할 소수는 ${want}입니다`); return; }
+
+      // 클릭한 소수는 노란 하이라이트(원래 파스텔은 유지)
+      el.classList.add('prime');
+
+      // 아직 안 지워진 배수만
+      const mults = [];
+      for(let k=num*2;k<=LIMIT_STAGE;k+=num){
+        if (!state.gray.has(k)) mults.push(k);
+      }
+
+      // 더 지울게 없으면(√LIMIT 이후) 안내
+      if (mults.length === 0){
+        showBeyondInfo(num);
+      }
+
+      // 배수 회색 처리 애니메이션
+      const delay = mults.length ? Math.max(5, Math.floor(2000/mults.length)) : 0;
+      mults.forEach((k,i)=> setTimeout(()=>grayOut(k), delay*i));
+
+      state.clicked.add(num);
+
+      setTimeout(()=>{
+        showMilestones(); updateInfo();
+        if (!nextPrime()){
+          setTimeout(()=>{ alert('고생하셨습니다. 이제 제가 소수를 찾아 적어볼께요.'); openRangeDialog(); }, 80);
+        }
+      }, delay*mults.length);
+    }
+
+    // 다이얼로그/유효성
+    const MAX_LIMIT = window.APP_CONFIG.MAX_LIMIT;
+    function validateAndCoerce(){
+      let v = Number(limitInput.value);
+      if (!Number.isInteger(v) || v<2){ errLabel.textContent='유효한 숫자를 입력해주세요.'; return null; }
+      if (v > MAX_LIMIT){
+        alert(`입력한 값이 너무 큽니다. 계산 가능한 최대치 ${MAX_LIMIT.toLocaleString()} 으로 자동 조정합니다.`);
+        v = MAX_LIMIT; limitInput.value = String(v);
+      }
+      errLabel.textContent=''; return v;
+    }
+    function openRangeDialog(){
+      limitInput.value='1000'; errLabel.textContent='';
+      try{ rangeDlg.showModal(); }catch{ rangeDlg.show(); }
+      limitInput.select(); limitInput.focus();
+    }
+    btnOpenRange.addEventListener('click', openRangeDialog);
+    btnRange.addEventListener('click', openRangeDialog);
+    btnCancel.addEventListener('click',()=>rangeDlg.close());
+    dlgForm.addEventListener('submit',(e)=>{
+      e.preventDefault();
+      const val = validateAndCoerce();
+      if (val==null) return;
+      rangeDlg.close();
+      let start=2, end=val, offset=1000;
+      if (val>10000){
+        start = Math.max(2, val-1000); end = val+1000;
+        alert(`시스템 부하를 줄이기 위해 ${start.toLocaleString()}부터 ${end.toLocaleString()}까지 소수만 찾아보겠습니다.`);
+      }
+      animateRange(start, end, offset);
+    });
+
+    // 모드 전환/리셋
+    function switchToTextMode(){
+      gridWrap.style.display='none';
+      textMode.style.display='block';
+      outArea.textContent='';
+    }
+    function resetGrid(){
+      textMode.style.display='none';
+      gridWrap.style.display='flex';
+      msgEl.textContent=''; msgEl.style.color='#7c3aed';
+      state.clicked.clear(); state.gray.clear(); state.milestonesReached.clear();
+      state.labels.forEach(el=>el.classList.remove('gray','prime'));
+      updateInfo(); window.scrollTo({top:0,behavior:'smooth'});
+    }
+    btnReset.addEventListener('click', resetGrid);
+
+    // 결과 애니메이션: 총 ~3초 분할 출력
+    function animateRange(start,end, offset=1000){
+      const sieve = computePrimes(end);
+      const primes=[];
+      for(let p=Math.max(2,start); p<=end; p++) if (sieve[p]) primes.push(p);
+      if (!primes.length){
+        if (confirm(`${start}부터 ${end}까지는 소수가 없습니다. ±${(offset*2).toLocaleString()} 범위로 다시 찾을까요?`))
+          return animateRange(Math.max(2,start-offset*2), end+offset*2, offset+1000);
+        return;
+      }
+      switchToTextMode();
+
+      const TARGET = window.APP_CONFIG.TEXT_ANIM_MS; // 목표 총시간(ms)
+      const N = primes.length;
+      const maxTicks = Math.min(180, N);
+      const chunkSize = Math.ceil(N / maxTicks);
+      const ticksNeeded = Math.ceil(N / chunkSize);
+      const delay = Math.max(0, Math.floor(TARGET / ticksNeeded));
+
+      let i=0;
+      (function pump(){
+        if (i<N){
+          const j = Math.min(i+chunkSize, N);
+          const slice = primes.slice(i,j).join(', ');
+          outArea.append(document.createTextNode((i? ', ':'') + slice));
+          i=j;
+          outArea.scrollTop = outArea.scrollHeight;
+          setTimeout(pump, delay);
+        }else{
+          outArea.append(document.createTextNode("\n이제 그만 찾아도 될 것 같아요. 그렇죠?\n"));
+          outArea.scrollTop = outArea.scrollHeight;
+        }
+      })();
+    }
+
+    // 자동 링크(문서 내 ‘위드석’/‘AI교육연구회’)
+    (function linkifyAll(){
+      const rules = window.APP_CONFIG.linkify;
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode(node){
+          if (!node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+          const p=node.parentNode; if (!p) return NodeFilter.FILTER_REJECT;
+          const tag=(p.tagName||'').toLowerCase();
+          if (tag==='a'||tag==='script'||tag==='style') return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      });
+      const targets=[];
+      while(walker.nextNode()) targets.push(walker.currentNode);
+      targets.forEach(node=>{
+        let text=node.nodeValue, changed=false;
+        rules.forEach(({text:kw,url})=>{
+          const re=new RegExp(kw,'g');
+          if (re.test(text)){ changed=true; text=text.replace(re, m=>`<a href="${url}" target="_blank" rel="noopener">${m}</a>`); }
+        });
+        if (changed){
+          const span=document.createElement('span'); span.innerHTML=text;
+          node.parentNode.replaceChild(span,node);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
