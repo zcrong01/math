@@ -1,0 +1,416 @@
+<!-- [주석단위] #_Part_00100_doctype_and_html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <!-- [주석단위] #_Part_00200_head_meta_title -->
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+  <title>반응형 원소 주기율표 — AI교육연구회 : 위드석</title>
+  <meta name="description" content="교과서 배치에 맞춘 주기율표. 클릭 1회: 기호, 2회: 한글까지 공개. 모두 보기/초기화/학습 로그." />
+
+  <!-- [주석단위] #_Part_00300_fonts_colors_css -->
+  <style>
+    :root{
+      --bg:#0b0f14; --panel:#0f1620; --ink:#e9f0ff; --muted:#9fb2c7; --accent:#4ca3ff; --chip:#162232;
+      --alkali:#ff8f70; --alkaline:#ffbf69; --transition:#6bb4ff; --post:#87e8b7; --metalloid:#caa6ff; 
+      --nonmetal:#8dd3ff; --halogen:#ffd166; --noble:#84f0ff; --lanth:#f7a8e0; --actin:#f6a6a6;
+      --placeholder:#334357; --cell-min:48px; --radius:12px; --gap:8px;
+    }
+    html,body{background:var(--bg); color:var(--ink); margin:0; font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,'Noto Sans KR','Malgun Gothic',Arial,sans-serif}
+    body{overflow-x:hidden}
+    a{color:var(--accent); text-decoration:none}
+    .wrap{max-width:1200px; margin:0 auto; padding:20px 12px}
+
+    .title{display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-bottom:10px}
+    .title h1{margin:0; font-size:clamp(20px,3vw,32px)}
+    .subtitle{color:var(--muted); font-size:13px}
+
+    .toolbar{display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin:12px 0 16px}
+    .legend{display:flex; gap:6px; flex-wrap:wrap}
+    .chip{display:inline-flex; gap:6px; align-items:center; padding:6px 10px; background:var(--chip); border:1px solid #1b2a3c; border-radius:999px; color:#b7c8df; font-size:12px}
+    .dot{width:12px; height:12px; border-radius:50%}
+    .actions{display:flex; gap:8px}
+    .btn{padding:10px 14px; background:#172334; border:1px solid #22324a; color:#e8f1ff; border-radius:10px; cursor:pointer; font-weight:600; font-size:14px}
+    .btn.primary{background:linear-gradient(180deg,#2b5fa3,#244c7f); border-color:#2b5fa3}
+
+    /* [주석단위] #_Part_00350_layout_reworked : 좌측 여백 제거 + 우측 패널 가시성 보장 */
+    .gridLayout{display:grid; grid-template-columns: 1fr 320px; gap:16px}
+    @media (max-width: 1080px){ .gridLayout{grid-template-columns:1fr} }
+
+    .board,.side{
+      background:linear-gradient(180deg,#0e1520,#0b1018); border:1px solid #202d44; border-radius:var(--radius); padding:14px;
+      box-shadow:0 8px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.03);
+    }
+    .board h2{margin:0 0 8px; font-size:16px; color:#cfe0f7}
+    .hint{color:var(--muted); font-size:13px; margin-bottom:10px}
+
+    /* 표 컨테이너에 가로 스크롤 허용 → 우측 패널이 화면 밖으로 밀리지 않음 */
+    .ptableWrap{overflow-x:auto; padding-bottom:6px}
+    .ptable{
+      display:grid; grid-template-columns: repeat(18, minmax(var(--cell-min), 1fr)); gap:var(--gap); min-width: calc(18 * var(--cell-min) + 17 * var(--gap));
+    }
+
+    .cell{
+      position:relative; border-radius:10px; padding:6px 6px 8px; background:#142034; border:1px solid #22324a; cursor:pointer; user-select:none;
+      display:flex; flex-direction:column; min-height:72px; transition:box-shadow .15s, transform .15s, border-color .15s; overflow:hidden;
+    }
+    .cell .z{font-size:11px; color:#9bb1c9}
+    .cell .sym{margin-top:2px; font-weight:800; letter-spacing:.2px; font-size:clamp(13px,2.4vw,20px)}
+    .cell .ko{margin-top:2px; font-size:11px; color:#c7d6ea; opacity:.92; white-space:nowrap}
+    .cell:hover{transform:translateY(-1px); box-shadow:0 10px 24px rgba(0,0,0,.25)}
+    .cell.selected{border-color:#74b3ff; box-shadow:0 0 0 2px rgba(116,179,255,.25), 0 14px 36px rgba(30,120,255,.28)}
+    .cell .catbar{position:absolute; inset:auto 0 0 0; height:4px; background:#2b3a52; opacity:.85}
+    .cell[data-cat="alkali"] .catbar{background:var(--alkali)}
+    .cell[data-cat="alkaline"] .catbar{background:var(--alkaline)}
+    .cell[data-cat="transition"] .catbar{background:var(--transition)}
+    .cell[data-cat="post"] .catbar{background:var(--post)}
+    .cell[data-cat="metalloid"] .catbar{background:var(--metalloid)}
+    .cell[data-cat="nonmetal"] .catbar{background:var(--nonmetal)}
+    .cell[data-cat="halogen"] .catbar{background:var(--halogen)}
+    .cell[data-cat="noble"] .catbar{background:var(--noble)}
+    .cell[data-cat="lanth"] .catbar{background:var(--lanth)}
+    .cell[data-cat="actin"] .catbar{background:var(--actin)}
+    .cell.placeholder{background:#152234; border-style:dashed; border-color:#3a516c; color:#a9bfd6; text-align:center; align-items:center; justify-content:center; min-height:72px; font-weight:700}
+
+    /* 점진적 공개 상태: data-state="0|1|2" */
+    .cell[data-state="0"] .sym, .cell[data-state="0"] .ko{visibility:hidden}
+    .cell[data-state="1"] .sym{visibility:visible}
+    .cell[data-state="1"] .ko{visibility:hidden}
+    .cell[data-state="2"] .sym, .cell[data-state="2"] .ko{visibility:visible}
+
+    .subrows{margin-top:14px; display:grid; gap:12px}
+    .subrowTitle{font-size:13px; color:#cfe0f7; margin:0 0 6px}
+    .subgrid{display:grid; grid-template-columns: repeat(15, minmax(var(--cell-min), 1fr)); gap:var(--gap); min-width: calc(15 * var(--cell-min) + 14 * var(--gap))}
+    @media (max-width:680px){ .subgrid{grid-template-columns: repeat(10, minmax(44px, 1fr)); min-width:auto} }
+
+    .side{position:sticky; top:12px; height:fit-content}
+    .side h3{margin:0 0 10px; font-size:16px; color:#cfe0f7}
+    .counter{font-size:12px; color:var(--muted); margin-bottom:10px}
+    .progress{height:8px; border-radius:999px; background:#112034; border:1px solid #1e2f49; overflow:hidden; margin-bottom:12px}
+    .bar{height:100%; background:linear-gradient(90deg,#2d7bf6,#20c3ff); width:0%}
+    .log{max-height:420px; overflow:auto; background:#0c141e; border:1px solid #1d2a40; border-radius:10px; padding:8px; font-size:13px}
+    .logItem{padding:6px 8px; border-bottom:1px dashed #22324a; display:flex; justify-content:space-between; gap:10px}
+    .logItem:last-child{border-bottom:none}
+    .mono{font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",Menlo,monospace; color:#d8e6ff}
+    .ghostTip{font-size:12px; color:#8aa2bd; margin-top:6px}
+
+    footer{margin-top:28px; padding-top:16px; border-top:1px solid #20314a; color:#a8bed6; font-size:12px}
+    .footline{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    .footline a{color:#a8bed6; text-decoration:underline}
+  </style>
+</head>
+<body>
+  <!-- [주석단위] #_Part_00400_header -->
+  <div class="wrap">
+    <div class="title">
+      <h1>반응형 원소 주기율표</h1>
+      <div class="subtitle">클릭 1회: <b>기호</b>, 2회: <b>한글</b>까지 공개. “모두 보기/초기화/복사” 지원.</div>
+    </div>
+
+    <!-- [주석단위] #_Part_00500_toolbar -->
+    <div class="toolbar">
+      <div class="legend">
+        <span class="chip"><span class="dot" style="background:var(--alkali)"></span>알칼리 금속</span>
+        <span class="chip"><span class="dot" style="background:var(--alkaline)"></span>알칼리 토금속</span>
+        <span class="chip"><span class="dot" style="background:var(--transition)"></span>전이 금속</span>
+        <span class="chip"><span class="dot" style="background:var(--post)"></span>전이후 금속</span>
+        <span class="chip"><span class="dot" style="background:var(--metalloid)"></span>준금속</span>
+        <span class="chip"><span class="dot" style="background:var(--nonmetal)"></span>다른 비금속</span>
+        <span class="chip"><span class="dot" style="background:var(--halogen)"></span>할로젠</span>
+        <span class="chip"><span class="dot" style="background:var(--noble)"></span>비활성 기체</span>
+        <span class="chip"><span class="dot" style="background:var(--lanth)"></span>란타노이드</span>
+        <span class="chip"><span class="dot" style="background:var(--actin)"></span>악티노이드</span>
+      </div>
+      <div class="actions">
+        <button class="btn" id="showAllBtn">모두 보기</button>
+        <button class="btn" id="resetBtn">초기화</button>
+        <button class="btn primary" id="copyBtn">선택 내역 복사</button>
+      </div>
+    </div>
+
+    <!-- [주석단위] #_Part_00600_layout -->
+    <div class="gridLayout">
+      <!-- 보드 -->
+      <section class="board">
+        <h2>본표 (1–7주기, 1–18족)</h2>
+        <div class="hint">처음엔 <b>원자번호만</b> 보여요. 같은 칸을 두 번 누르면 한글까지 드러납니다.</div>
+
+        <div class="ptableWrap">
+          <div class="ptable" id="ptable"></div>
+        </div>
+
+        <div class="subrows">
+          <div class="ptableWrap">
+            <h3 class="subrowTitle">란타노이드 (57–71)</h3>
+            <div class="subgrid" id="lanthGrid"></div>
+          </div>
+          <div class="ptableWrap">
+            <h3 class="subrowTitle">악티노이드 (89–103)</h3>
+            <div class="subgrid" id="actinGrid"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 선택 내역 -->
+      <aside class="side">
+        <h3>선택 내역</h3>
+        <div class="counter"><span id="countSel">0</span> / <span id="countTotal">118</span> 완료</div>
+        <div class="progress"><div class="bar" id="bar"></div></div>
+        <div class="log" id="log">
+          <div class="ghostTip">두 번 클릭하여(기호→한글) 공개하면 여기 기록됩니다.</div>
+        </div>
+        <div class="ghostTip">※ “모두 보기”는 로그를 채우지 않습니다(수업 설명용).</div>
+      </aside>
+    </div>
+
+    <!-- [주석단위] #_Part_00700_footer_required_4 -->
+    <footer>
+      <div class="footline">
+        <span>ⓒ 2025 AI교육연구회 withseok. All rights reserved. (위드석)</span>
+        <span>·</span>
+        <span>상업적 이용 금지 (Non‑commercial use only)</span>
+        <span>·</span>
+        <a href="https://withseok.tistory.com/606" target="_blank" rel="noopener">위드석</a>
+        <span>·</span>
+        <a href="https://aiers.kr" target="_blank" rel="noopener">AI교육연구회</a>
+      </div>
+    </footer>
+  </div>
+
+  <!-- [주석단위] #_Part_00800_script_data_and_logic -->
+  <script>
+    /* 데이터 정의 (기호, 한글명, 좌표, 분류) */
+    const MAIN = [
+      {z:1, sym:'H',  ko:'수소',          r:1, c:1,  cat:'nonmetal'},
+      {z:2, sym:'He', ko:'헬륨',          r:1, c:18, cat:'noble'},
+      {z:3, sym:'Li', ko:'리튬',          r:2, c:1,  cat:'alkali'},
+      {z:4, sym:'Be', ko:'베릴륨',        r:2, c:2,  cat:'alkaline'},
+      {z:5, sym:'B',  ko:'붕소',          r:2, c:13, cat:'metalloid'},
+      {z:6, sym:'C',  ko:'탄소',          r:2, c:14, cat:'nonmetal'},
+      {z:7, sym:'N',  ko:'질소',          r:2, c:15, cat:'nonmetal'},
+      {z:8, sym:'O',  ko:'산소',          r:2, c:16, cat:'nonmetal'},
+      {z:9, sym:'F',  ko:'플루오린(불소)', r:2, c:17, cat:'halogen'},
+      {z:10,sym:'Ne', ko:'네온',          r:2, c:18, cat:'noble'},
+      {z:11,sym:'Na', ko:'나트륨',        r:3, c:1,  cat:'alkali'},
+      {z:12,sym:'Mg', ko:'마그네슘',      r:3, c:2,  cat:'alkaline'},
+      {z:13,sym:'Al', ko:'알루미늄',      r:3, c:13, cat:'post'},
+      {z:14,sym:'Si', ko:'규소',          r:3, c:14, cat:'metalloid'},
+      {z:15,sym:'P',  ko:'인',            r:3, c:15, cat:'nonmetal'},
+      {z:16,sym:'S',  ko:'황',            r:3, c:16, cat:'nonmetal'},
+      {z:17,sym:'Cl', ko:'염소',          r:3, c:17, cat:'halogen'},
+      {z:18,sym:'Ar', ko:'아르곤',        r:3, c:18, cat:'noble'},
+      {z:19,sym:'K',  ko:'칼륨',          r:4, c:1,  cat:'alkali'},
+      {z:20,sym:'Ca', ko:'칼슘',          r:4, c:2,  cat:'alkaline'},
+      {z:21,sym:'Sc', ko:'스칸듐',        r:4, c:3,  cat:'transition'},
+      {z:22,sym:'Ti', ko:'티타늄',        r:4, c:4,  cat:'transition'},
+      {z:23,sym:'V',  ko:'바나듐',        r:4, c:5,  cat:'transition'},
+      {z:24,sym:'Cr', ko:'크로뮴',        r:4, c:6,  cat:'transition'},
+      {z:25,sym:'Mn', ko:'망가니즈',      r:4, c:7,  cat:'transition'},
+      {z:26,sym:'Fe', ko:'철',            r:4, c:8,  cat:'transition'},
+      {z:27,sym:'Co', ko:'코발트',        r:4, c:9,  cat:'transition'},
+      {z:28,sym:'Ni', ko:'니켈',          r:4, c:10, cat:'transition'},
+      {z:29,sym:'Cu', ko:'구리',          r:4, c:11, cat:'transition'},
+      {z:30,sym:'Zn', ko:'아연',          r:4, c:12, cat:'transition'},
+      {z:31,sym:'Ga', ko:'갈륨',          r:4, c:13, cat:'post'},
+      {z:32,sym:'Ge', ko:'게르마늄',      r:4, c:14, cat:'metalloid'},
+      {z:33,sym:'As', ko:'비소',          r:4, c:15, cat:'metalloid'},
+      {z:34,sym:'Se', ko:'셀레늄',        r:4, c:16, cat:'nonmetal'},
+      {z:35,sym:'Br', ko:'브롬',          r:4, c:17, cat:'halogen'},
+      {z:36,sym:'Kr', ko:'크립톤',        r:4, c:18, cat:'noble'},
+      {z:37,sym:'Rb', ko:'루비듐',        r:5, c:1,  cat:'alkali'},
+      {z:38,sym:'Sr', ko:'스트론튬',      r:5, c:2,  cat:'alkaline'},
+      {z:39,sym:'Y',  ko:'이트륨',        r:5, c:3,  cat:'transition'},
+      {z:40,sym:'Zr', ko:'지르코늄',      r:5, c:4,  cat:'transition'},
+      {z:41,sym:'Nb', ko:'나이오븀',      r:5, c:5,  cat:'transition'},
+      {z:42,sym:'Mo', ko:'몰리브데넘',    r:5, c:6,  cat:'transition'},
+      {z:43,sym:'Tc', ko:'테크네튬',      r:5, c:7,  cat:'transition'},
+      {z:44,sym:'Ru', ko:'루테늄',        r:5, c:8,  cat:'transition'},
+      {z:45,sym:'Rh', ko:'로듐',          r:5, c:9,  cat:'transition'},
+      {z:46,sym:'Pd', ko:'팔라듐',        r:5, c:10, cat:'transition'},
+      {z:47,sym:'Ag', ko:'은',            r:5, c:11, cat:'transition'},
+      {z:48,sym:'Cd', ko:'카드뮴',        r:5, c:12, cat:'transition'},
+      {z:49,sym:'In', ko:'인듐',          r:5, c:13, cat:'post'},
+      {z:50,sym:'Sn', ko:'주석',          r:5, c:14, cat:'post'},
+      {z:51,sym:'Sb', ko:'안티몬',        r:5, c:15, cat:'metalloid'},
+      {z:52,sym:'Te', ko:'텔루륨',        r:5, c:16, cat:'metalloid'},
+      {z:53,sym:'I',  ko:'아이오딘(요오드)', r:5, c:17, cat:'halogen'},
+      {z:54,sym:'Xe', ko:'제논',          r:5, c:18, cat:'noble'},
+      {z:55,sym:'Cs', ko:'세슘',          r:6, c:1,  cat:'alkali'},
+      {z:56,sym:'Ba', ko:'바륨',          r:6, c:2,  cat:'alkaline'},
+      {z:72,sym:'Hf', ko:'하프늄',        r:6, c:4,  cat:'transition'},
+      {z:73,sym:'Ta', ko:'탄탈럼',        r:6, c:5,  cat:'transition'},
+      {z:74,sym:'W',  ko:'텅스텐',        r:6, c:6,  cat:'transition'},
+      {z:75,sym:'Re', ko:'레늄',          r:6, c:7,  cat:'transition'},
+      {z:76,sym:'Os', ko:'오스뮴',        r:6, c:8,  cat:'transition'},
+      {z:77,sym:'Ir', ko:'이리듐',        r:6, c:9,  cat:'transition'},
+      {z:78,sym:'Pt', ko:'백금',          r:6, c:10, cat:'transition'},
+      {z:79,sym:'Au', ko:'금',            r:6, c:11, cat:'transition'},
+      {z:80,sym:'Hg', ko:'수은',          r:6, c:12, cat:'transition'},
+      {z:81,sym:'Tl', ko:'탈륨',          r:6, c:13, cat:'post'},
+      {z:82,sym:'Pb', ko:'납',            r:6, c:14, cat:'post'},
+      {z:83,sym:'Bi', ko:'비스무트',      r:6, c:15, cat:'post'},
+      {z:84,sym:'Po', ko:'폴로늄',        r:6, c:16, cat:'post'},
+      {z:85,sym:'At', ko:'아스타틴',      r:6, c:17, cat:'halogen'},
+      {z:86,sym:'Rn', ko:'라돈',          r:6, c:18, cat:'noble'},
+      {z:87,sym:'Fr', ko:'프랑슘',        r:7, c:1,  cat:'alkali'},
+      {z:88,sym:'Ra', ko:'라듐',          r:7, c:2,  cat:'alkaline'},
+      {z:104,sym:'Rf',ko:'러더퍼듐',      r:7, c:4,  cat:'transition'},
+      {z:105,sym:'Db',ko:'더브늄',        r:7, c:5,  cat:'transition'},
+      {z:106,sym:'Sg',ko:'시보귬',        r:7, c:6,  cat:'transition'},
+      {z:107,sym:'Bh',ko:'보륨',          r:7, c:7,  cat:'transition'},
+      {z:108,sym:'Hs',ko:'하슘',          r:7, c:8,  cat:'transition'},
+      {z:109,sym:'Mt',ko:'마이트너륨',    r:7, c:9,  cat:'transition'},
+      {z:110,sym:'Ds',ko:'다름스타튬',    r:7, c:10, cat:'transition'},
+      {z:111,sym:'Rg',ko:'뢴트게늄',      r:7, c:11, cat:'transition'},
+      {z:112,sym:'Cn',ko:'코페르니슘',    r:7, c:12, cat:'transition'},
+      {z:113,sym:'Nh',ko:'니호늄',        r:7, c:13, cat:'post'},
+      {z:114,sym:'Fl',ko:'플레로븀',      r:7, c:14, cat:'post'},
+      {z:115,sym:'Mc',ko:'모스코븀',      r:7, c:15, cat:'post'},
+      {z:116,sym:'Lv',ko:'리버모륨',      r:7, c:16, cat:'post'},
+      {z:117,sym:'Ts',ko:'테네신',        r:7, c:17, cat:'halogen'},
+      {z:118,sym:'Og',ko:'오가네손',      r:7, c:18, cat:'noble'},
+    ];
+    const PLACEHOLDERS = [{txt:'57–71', r:6, c:3},{txt:'89–103', r:7, c:3}];
+    const LANTH = [
+      {z:57, sym:'La', ko:'란타넘', cat:'lanth'},{z:58, sym:'Ce', ko:'세륨', cat:'lanth'},{z:59, sym:'Pr', ko:'프라세오디뮴', cat:'lanth'},
+      {z:60, sym:'Nd', ko:'네오디뮴', cat:'lanth'},{z:61, sym:'Pm', ko:'프로메튬', cat:'lanth'},{z:62, sym:'Sm', ko:'사마륨', cat:'lanth'},
+      {z:63, sym:'Eu', ko:'유로퓸', cat:'lanth'},{z:64, sym:'Gd', ko:'가돌리늄', cat:'lanth'},{z:65, sym:'Tb', ko:'터븀', cat:'lanth'},
+      {z:66, sym:'Dy', ko:'디스프로슘', cat:'lanth'},{z:67, sym:'Ho', ko:'홀뮴', cat:'lanth'},{z:68, sym:'Er', ko:'에르븀', cat:'lanth'},
+      {z:69, sym:'Tm', ko:'툴륨', cat:'lanth'},{z:70, sym:'Yb', ko:'이터븀', cat:'lanth'},{z:71, sym:'Lu', ko:'루테튬', cat:'lanth'},
+    ];
+    const ACTIN = [
+      {z:89, sym:'Ac', ko:'악티늄', cat:'actin'},{z:90, sym:'Th', ko:'토륨', cat:'actin'},{z:91, sym:'Pa', ko:'프로트악티늄', cat:'actin'},
+      {z:92, sym:'U',  ko:'우라늄', cat:'actin'},{z:93, sym:'Np', ko:'넵투늄', cat:'actin'},{z:94, sym:'Pu', ko:'플루토늄', cat:'actin'},
+      {z:95, sym:'Am', ko:'아메리슘', cat:'actin'},{z:96, sym:'Cm', ko:'퀴륨', cat:'actin'},{z:97, sym:'Bk', ko:'버클륨', cat:'actin'},
+      {z:98, sym:'Cf', ko:'캘리포늄', cat:'actin'},{z:99, sym:'Es', ko:'아인슈타이늄', cat:'actin'},{z:100, sym:'Fm', ko:'페르뮴', cat:'actin'},
+      {z:101, sym:'Md', ko:'멘델레븀', cat:'actin'},{z:102, sym:'No', ko:'노벨륨', cat:'actin'},{z:103, sym:'Lr', ko:'로렌슘', cat:'actin'},
+    ];
+    const TOTAL = 118;
+
+    const ptable = document.getElementById('ptable');
+    const lanthGrid = document.getElementById('lanthGrid');
+    const actinGrid = document.getElementById('actinGrid');
+    const log = document.getElementById('log');
+    const bar = document.getElementById('bar');
+    const countSel = document.getElementById('countSel');
+    const countTotal = document.getElementById('countTotal'); countTotal.textContent = TOTAL;
+
+    /* 본표 그리드 구성 */
+    const byRC = new Map(); MAIN.forEach(e=>byRC.set(`${e.r}-${e.c}`, e));
+    for(let r=1;r<=7;r++){
+      for(let c=1;c<=18;c++){
+        const key = `${r}-${c}`;
+        const holder = PLACEHOLDERS.find(p=>p.r===r && p.c===c);
+        if(holder){
+          const ph = document.createElement('div');
+          ph.className='cell placeholder'; ph.style.gridRow=r; ph.style.gridColumn=c; ph.textContent=holder.txt;
+          ptable.appendChild(ph); continue;
+        }
+        const e = byRC.get(key);
+        const cell = document.createElement('div');
+        cell.className='cell'; cell.style.gridRow=r; cell.style.gridColumn=c;
+        if(e){
+          cell.dataset.z=e.z; cell.dataset.cat=e.cat; cell.dataset.state='0'; // 0=번호만, 1=기호공개, 2=한글까지
+          cell.innerHTML = `
+            <div class="z">${e.z}</div>
+            <div class="sym">${e.sym}</div>
+            <div class="ko">${e.ko}</div>
+            <div class="catbar"></div>`;
+        }else{
+          cell.style.visibility='hidden'; cell.style.pointerEvents='none';
+        }
+        ptable.appendChild(cell);
+      }
+    }
+
+    const makeCell = (e)=>{
+      const d=document.createElement('div');
+      d.className='cell'; d.dataset.z=e.z; d.dataset.cat=e.cat; d.dataset.state='0';
+      d.innerHTML=`
+        <div class="z">${e.z}</div>
+        <div class="sym">${e.sym}</div>
+        <div class="ko">${e.ko}</div>
+        <div class="catbar"></div>`;
+      return d;
+    };
+    LANTH.forEach(e=>lanthGrid.appendChild(makeCell(e)));
+    ACTIN.forEach(e=>actinGrid.appendChild(makeCell(e)));
+
+    /* 상호작용 */
+    const picked = new Set(); // state=2 된 Z만 카운트
+    const addLog = (z, sym, ko)=>{
+      if(log.querySelector('.ghostTip')) log.innerHTML = '';
+      const row = document.createElement('div');
+      row.className='logItem';
+      row.innerHTML = `<span class="mono">${String(z).padStart(3,'0')}</span> <span>${sym} — ${ko}</span>`;
+      log.appendChild(row); log.scrollTop = log.scrollHeight;
+    };
+    const updateProgress = ()=>{
+      const n = picked.size;
+      countSel.textContent = n;
+      const pct = Math.round(n / TOTAL * 100);
+      bar.style.width = pct + '%';
+      bar.setAttribute('aria-valuenow', pct);
+    };
+
+    const advanceCell = (cell)=>{
+      const st = Number(cell.dataset.state || '0');
+      if(isNaN(st) || st<0 || st>2) { cell.dataset.state='0'; return; }
+      const z = Number(cell.dataset.z);
+      const sym = cell.querySelector('.sym')?.textContent || '';
+      const ko = cell.querySelector('.ko')?.textContent || '';
+      if(st===0){
+        cell.dataset.state='1'; // 기호 공개
+        cell.style.transform='translateY(-2px)'; setTimeout(()=>cell.style.transform='',110);
+      }else if(st===1){
+        cell.dataset.state='2'; // 한글까지 공개
+        cell.classList.add('selected');
+        if(!picked.has(z)){ picked.add(z); addLog(z, sym, ko); updateProgress(); }
+      }else{
+        // 이미 2 → 작은 피드백
+        cell.style.transform='translateY(-2px) scale(1.02)'; setTimeout(()=>cell.style.transform='',110);
+      }
+    };
+
+    const bindClicks = root=>{
+      root.querySelectorAll('.cell').forEach(cell=>{
+        if(!cell.dataset.z) return;
+        cell.addEventListener('click', ()=>advanceCell(cell));
+      });
+    };
+    bindClicks(document);
+
+    /* 버튼 */
+    const resetAll = ()=>{
+      picked.clear();
+      document.querySelectorAll('.cell').forEach(cell=>{
+        if(cell.dataset && 'state' in cell.dataset){ cell.dataset.state='0'; cell.classList.remove('selected'); }
+      });
+      log.innerHTML = `<div class="ghostTip">초기화했습니다. 두 번 클릭하면 기록됩니다.</div>`;
+      updateProgress();
+    };
+    document.getElementById('resetBtn').addEventListener('click', resetAll);
+
+    document.getElementById('copyBtn').addEventListener('click', ()=>{
+      const items=[...log.querySelectorAll('.logItem')].map(el=>el.textContent.trim());
+      const txt=items.join('\n');
+      if(!txt){ alert('복사할 선택 내역이 없습니다.'); return; }
+      navigator.clipboard.writeText(txt).then(()=>{
+        const btn=document.getElementById('copyBtn'); const old=btn.textContent; btn.textContent='복사 완료!'; setTimeout(()=>btn.textContent=old,900);
+      });
+    });
+
+    document.getElementById('showAllBtn').addEventListener('click', ()=>{
+      document.querySelectorAll('.cell').forEach(cell=>{
+        if(cell.dataset && 'state' in cell.dataset){ cell.dataset.state='2'; cell.classList.add('selected'); }
+      });
+      // “모두 보기”는 학습 로그/카운트에 반영하지 않음 → picked/로그/진행도는 그대로 유지
+      // 필요하면 아래 두 줄을 주석해제하여 모두 완료로 집계 가능:
+      // picked.clear(); document.querySelectorAll('.cell[data-z]').forEach(c=>picked.add(Number(c.dataset.z))); updateProgress();
+    });
+
+    /* 초기 상태 */
+    updateProgress();
+  </script>
+</body>
+</html>
