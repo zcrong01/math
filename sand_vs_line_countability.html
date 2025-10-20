@@ -1,0 +1,354 @@
+<!-- _Part_00100_meta : 문서 정보/전역 설정 -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>모래알 vs 모래사장 vs 실수선 — 가산/비가산 직관 수업자료</title>
+<meta name="description" content="모래알(입자)과 모래사장(위치), 실수선(연속)의 대비로 가산/비가산, 조밀성의 차이를 직관적으로 이해하는 인터랙티브 자료" />
+<style>
+  /* _Part_00200_reset_base : 베이스/리셋 */
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, sans-serif; color:#111; background:#fafafa; }
+  a { color: inherit; text-decoration: none; }
+  button { cursor:pointer; border:1px solid #ccc; background:#fff; padding:.6rem .9rem; border-radius:8px; font-size:1rem; }
+  button:hover { background:#f3f3f3; }
+  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+
+  /* _Part_00300_layout : 레이아웃/헤더/탭 */
+  .container { max-width: 1100px; margin: 0 auto; padding: clamp(12px, 2vw, 20px); }
+  header { display:flex; gap:16px; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .brand { font-weight:800; font-size:clamp(18px, 2.4vw, 26px); letter-spacing: .3px; }
+  .subtitle { color:#555; font-size:.95rem; }
+
+  .tabs { display:flex; gap:8px; flex-wrap: wrap; margin: 12px 0 16px; }
+  .tab { padding:.55rem .9rem; border-radius:999px; border:1px solid #ddd; background:#fff; }
+  .tab.active { border-color:#111; background:#111; color:#fff; }
+
+  /* _Part_00400_card : 카드/콘텐츠 */
+  .card { background:#fff; border:1px solid #e8e8e8; border-radius:14px; padding:16px; box-shadow: 0 2px 12px rgba(0,0,0,.04); }
+  .grid { display:grid; gap:16px; grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .grid { grid-template-columns: 1.1fr .9fr; } }
+
+  h2 { margin:.2rem 0 0.6rem; font-size:clamp(20px,2.2vw,26px); }
+  h3 { margin:1rem 0 .4rem; font-size:clamp(16px,2vw,20px); }
+  p { line-height:1.6; }
+
+  .pill { display:inline-block; padding:.25rem .6rem; border-radius:999px; border:1px solid #ddd; font-size:.85rem; margin-right:6px; }
+  .ok { background:#e8f9ee; border-color:#bde9cf; }
+  .warn { background:#fff4e5; border-color:#ffe0b2; }
+  .bad { background:#ffe8e8; border-color:#ffc2c2; }
+
+  /* _Part_00500_stage : 데모 스테이지 공통 */
+  .stage { position:relative; background:#f7f7fb; border:1px dashed #cfcfe8; min-height:260px; border-radius:12px; overflow:hidden; padding:12px; }
+  .stage h4 { margin:0 0 .5rem; font-size:1rem; color:#444; }
+  .controls { display:flex; gap:8px; flex-wrap: wrap; margin:.5rem 0 1rem; }
+  .legend { display:flex; gap:8px; flex-wrap: wrap; font-size:.9rem; color:#444; }
+
+  /* _Part_00600_stage_specific : 각 데모 스타일 */
+  /* 모래알(가산) 점 배치 */
+  .sand-area { position:absolute; inset:50px 12px 12px 12px; }
+  .grain { position:absolute; width:14px; height:14px; border-radius:50%; background:#111; color:#fff; font-size:.65rem; display:flex; align-items:center; justify-content:center; transform: translate(-50%, -50%); }
+  .grain.tagged { background:#2a7; }
+
+  /* 모래사장(연속 위치) */
+  .beach-line { position:absolute; left:5%; right:5%; top:50%; height:4px; background:linear-gradient(90deg, #bde0fe, #a1f0ff); border-radius:2px; }
+  .position { position:absolute; top:calc(50% - 10px); width:20px; height:20px; border-radius:50%; border:2px solid #111; background:#fff; transform: translateX(-50%); }
+  .tick { position:absolute; top: calc(50% + 8px); width:2px; height:10px; background:#777; transform: translateX(-50%); }
+  .tick-label { position:absolute; top: calc(50% + 20px); transform: translateX(-50%); font-size:.8rem; color:#555; }
+
+  /* 실수선(대각선 논법) */
+  .list { display:grid; grid-template-columns: 1fr; gap:6px; max-height: 180px; overflow:auto; padding-right:6px; }
+  .row { display:flex; gap:10px; align-items:center; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+  .row .idx { width:32px; text-align:right; color:#666; }
+  .row .num { white-space:nowrap; }
+  .diag { background: #ffefb5; border-radius:4px; padding:2px 4px; }
+  .newnum { font-weight:700; color:#b00020; }
+  .hint { font-size:.9rem; color:#555; }
+
+  /* _Part_00700_footer : 푸터 4요소 */
+  footer { margin: 24px auto 14px; padding-top:12px; border-top:1px solid #eee; color:#555; font-size:.9rem; }
+  .footer-grid { display:grid; gap:6px; }
+  @media (min-width: 620px) { .footer-grid { grid-template-columns: 1fr 1fr; } }
+  .muted { color:#666; font-size:.85rem; }
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- _Part_00800_header : 헤더/탭 -->
+  <header>
+    <div>
+      <div class="brand">모래알 vs 모래사장 vs 실수선</div>
+      <div class="subtitle">가산/비가산과 조밀성의 차이를 직관으로 이해하기</div>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-tab="sand">모래알 (입자) = 가산/유한</button>
+    <button class="tab" data-tab="beach">모래사장 (위치) = 연속(실수)</button>
+    <button class="tab" data-tab="reals">실수선 (연속) = 비가산</button>
+  </nav>
+
+  <!-- _Part_00900_sections : 섹션 3개 -->
+  <section id="sand" class="card">
+    <div class="grid">
+      <div>
+        <h2>모래알: “번호표를 붙일 수 있는가?” → <span class="pill ok">가산 가능</span></h2>
+        <p>
+          실제로는 너무 많아서 <b>다 세기 어렵지만</b>, 각 모래알을 구분하고 <b>1,2,3,…</b> 식으로 번호를 붙일 <em>원리</em>가 있으면
+          수학적으로는 <b>가산</b>으로 봅니다. (현실적 불가능 &ne; 수학적 불가능)
+        </p>
+        <ul>
+          <li><b>핵심:</b> 자연수와 1:1 대응이 가능하면 가산.</li>
+          <li><b>조밀성:</b> 입자는 조밀하다고 하지 않음(연속 공간이 아님).</li>
+          <li><b>직관:</b> “번호표가 <i>가능</i>한 구조냐?”만 본다.</li>
+        </ul>
+        <div class="controls">
+          <button id="btnTag">번호표 붙이기 시작</button>
+          <button id="btnResetTag">초기화</button>
+        </div>
+        <div class="legend">
+          <span class="pill">검은 점: 미표기 모래알</span>
+          <span class="pill ok">초록 점: 번호표 부여(가산)</span>
+        </div>
+      </div>
+      <div>
+        <div class="stage">
+          <h4>데모: 모래알에 1,2,3,… 번호를 붙일 수 있다면 → 가산</h4>
+          <div class="sand-area" id="sandArea" aria-label="sand grains area"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="beach" class="card" style="display:none;">
+    <div class="grid">
+      <div>
+        <h2>모래사장(위치): “연속적인 위치(좌표)들” → <span class="pill warn">실수와 1:1</span></h2>
+        <p>
+          해변의 <b>위치</b>는 연속적입니다. 이 선 위의 각 점은 하나의 실수와 対응합니다.
+          즉, “모래사장의 위치 전체”는 <b>실수 집합</b>과 같다고 볼 수 있습니다.
+        </p>
+        <ul>
+          <li><b>핵심:</b> <span class="mono">[0,1]</span> 선분의 점 &harr; 실수 1:1 대응</li>
+          <li><b>결과:</b> 실수는 <b class="bad">비가산</b> (번호표 불가)</li>
+          <li><b>혼동 주의:</b> “입자(모래알)”와 “위치(연속)”는 다른 대상</li>
+        </ul>
+        <div class="controls">
+          <button id="btnAddPositions">임의의 위치 찍기</button>
+          <button id="btnClearPositions">위치 지우기</button>
+        </div>
+        <p class="muted">많이 찍어도 여전히 “점 사이에 또 점”이 들어갈 자리가 항상 남아있습니다(연속).</p>
+      </div>
+      <div>
+        <div class="stage" id="beachStage">
+          <h4>데모: 선분 위의 연속적인 위치들 (각 점 ↔ 실수)</h4>
+          <div class="beach-line" id="beachLine"></div>
+          <!-- 눈금 -->
+          <div class="tick" style="left:5%;"></div>
+          <div class="tick-label" style="left:5%;">0</div>
+          <div class="tick" style="left:95%;"></div>
+          <div class="tick-label" style="left:95%;">1</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="reals" class="card" style="display:none;">
+    <div class="grid">
+      <div>
+        <h2>실수선: “아무리 목록을 만들어도 빠지는 수가 생긴다” → <span class="pill bad">비가산</span></h2>
+        <p>
+          0과 1 사이의 실수를 <q>쭉 나열</q>한다고 가정해도, <b>칸토어의 대각선 논법</b>으로
+          <em>목록에 없는</em> 새 실수를 언제든 만들 수 있습니다. 즉 자연수로는 <b>절대 다 셀 수 없음</b>.
+        </p>
+        <div class="controls">
+          <button id="btnGenList">가상 목록 만들기</button>
+          <button id="btnDiagonal">대각선으로 새 실수 만들기</button>
+          <button id="btnResetList">초기화</button>
+        </div>
+        <p class="hint">대각선 위치의 숫자를 바꿔가며(예: 1→2, 2→3, …, 9→1) 새로운 실수를 구성합니다.</p>
+      </div>
+      <div>
+        <div class="stage">
+          <h4>데모: 대각선 논법(목록에 없는 새 실수 생성)</h4>
+          <div class="list" id="realList" aria-label="real numbers list"></div>
+          <div id="newNumberBox" class="hint" style="margin-top:6px;"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- _Part_01000_teacher_notes : 교사용 가이드(접기/펼치기) -->
+  <section class="card" style="margin-top:12px;">
+    <details>
+      <summary><b>수업 진행 가이드 (교사용)</b></summary>
+      <ol>
+        <li><b>모래알</b>: “실제로 다 못 세지만, 번호표는 원리상 붙일 수 있다 → 가산”을 강조.</li>
+        <li><b>모래사장</b>: “입자”가 아니라 “위치(연속)”임을 분리해서 설명. 위치 전체 ↔ 실수.</li>
+        <li><b>실수선</b>: 아무리 나열(자연수 색인)해도 빠지는 수가 생김 → 비가산(대각선 데모).</li>
+        <li><b>조밀성</b>: 유리수는 조밀하지만 가산. 조밀성(위상) ≠ 가산성(기수) 차원 구분 강조.</li>
+      </ol>
+      <p class="muted">질문 유도: “모래알을 무한이라 가정해도 가산인가?”, “모래사장의 ‘위치’의 성질은?”</p>
+    </details>
+  </section>
+
+  <!-- _Part_01100_footer : AIERS 푸터 4요소 -->
+  <footer>
+    <div class="footer-grid">
+      <div>ⓒ 2025 AI교육연구회 withseok. All rights reserved. (위드석)</div>
+      <div>비영리 목적의 교육적 사용에 한합니다. (Non-commercial use only)</div>
+      <div><a href="https://withseok.tistory.com/606" target="_blank" rel="noopener">위드석</a></div>
+      <div><a href="https://aiers.kr" target="_blank" rel="noopener">AI교육연구회</a></div>
+    </div>
+  </footer>
+</div>
+
+<!-- _Part_01200_scripts : 인터랙션 스크립트 -->
+<script>
+  // 탭 전환
+  const tabs = document.getElementById('tabs');
+  const sections = ['sand','beach','reals'].map(id => document.getElementById(id));
+  tabs.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tab');
+    if(!btn) return;
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    btn.classList.add('active');
+    const target = btn.dataset.tab;
+    sections.forEach(sec => sec.style.display = (sec.id === target ? 'block' : 'none'));
+  });
+
+  // ===== 모래알: 가산 데모 =====
+  const sandArea = document.getElementById('sandArea');
+  const grains = [];
+  const GRAIN_COUNT = 36;
+
+  function randomIn(min, max){ return Math.random()*(max-min)+min; }
+
+  function initGrains(){
+    sandArea.innerHTML = '';
+    grains.length = 0;
+    const rect = sandArea.getBoundingClientRect();
+    for(let i=0;i<GRAIN_COUNT;i++){
+      const x = randomIn(10, rect.width-10);
+      const y = randomIn(10, rect.height-10);
+      const g = document.createElement('div');
+      g.className = 'grain';
+      g.style.left = x + 'px';
+      g.style.top = y + 'px';
+      g.textContent = '';
+      sandArea.appendChild(g);
+      grains.push(g);
+    }
+  }
+  initGrains();
+  window.addEventListener('resize', initGrains);
+
+  let tagTimer = null, tagIndex = 0;
+  document.getElementById('btnTag').addEventListener('click', ()=>{
+    if(tagTimer) return;
+    // 하나씩 번호표(1,2,3,…) 부여 → "자연수와 1:1"
+    tagTimer = setInterval(()=>{
+      if(tagIndex >= grains.length){ clearInterval(tagTimer); tagTimer=null; return; }
+      const g = grains[tagIndex];
+      g.classList.add('tagged');
+      g.textContent = (tagIndex+1);
+      tagIndex++;
+    }, 200);
+  });
+  document.getElementById('btnResetTag').addEventListener('click', ()=>{
+    if(tagTimer){ clearInterval(tagTimer); tagTimer=null; }
+    tagIndex = 0;
+    grains.forEach(g=>{ g.classList.remove('tagged'); g.textContent=''; });
+  });
+
+  // ===== 모래사장(위치): 실수와 1:1 =====
+  const beachStage = document.getElementById('beachStage');
+  const beachLine = document.getElementById('beachLine');
+  function addRandomPositions(n=8){
+    const rect = beachLine.getBoundingClientRect();
+    for(let i=0;i<n;i++){
+      const t = Math.random(); // [0,1] 실수
+      const px = rect.left + t * rect.width;
+      const dot = document.createElement('div');
+      dot.className = 'position';
+      dot.style.left = ( (t*90)+5 ) + '%'; // 5%~95% 구간
+      dot.title = `x = ${t.toFixed(6)} (실수 좌표)`;
+      beachStage.appendChild(dot);
+    }
+  }
+  function clearPositions(){
+    beachStage.querySelectorAll('.position').forEach(n=>n.remove());
+  }
+  document.getElementById('btnAddPositions').addEventListener('click', ()=> addRandomPositions(10));
+  document.getElementById('btnClearPositions').addEventListener('click', clearPositions);
+
+  // ===== 실수선: 대각선 논법 미니 시뮬레이션 =====
+  const listEl = document.getElementById('realList');
+  const newBox = document.getElementById('newNumberBox');
+  let mockList = [];
+
+  function randomDecimal(){
+    let s = '0.';
+    for(let i=0;i<12;i++){
+      s += Math.floor(Math.random()*10);
+    }
+    return s;
+  }
+
+  function renderList(){
+    listEl.innerHTML = '';
+    mockList.forEach((num, i)=>{
+      const row = document.createElement('div');
+      row.className = 'row';
+      const idx = document.createElement('div');
+      idx.className = 'idx';
+      idx.textContent = (i+1)+'.';
+      const nspan = document.createElement('div');
+      nspan.className = 'num';
+      // 대각선 자리 하이라이트
+      const parts = num.split('.');
+      const intpart = parts[0] || '0';
+      const frac = (parts[1]||'').padEnd(12,'0').split('');
+      if(frac[i] !== undefined){
+        frac[i] = `<span class="diag">${frac[i]}</span>`;
+      }
+      nspan.innerHTML = intpart + '.' + frac.join('');
+      row.appendChild(idx);
+      row.appendChild(nspan);
+      listEl.appendChild(row);
+    });
+  }
+
+  document.getElementById('btnGenList').addEventListener('click', ()=>{
+    mockList = Array.from({length: 10}, ()=> randomDecimal());
+    newBox.innerHTML = '';
+    renderList();
+  });
+
+  document.getElementById('btnDiagonal').addEventListener('click', ()=>{
+    if(mockList.length === 0){ return; }
+    // 대각선 자리 숫자를 모두 바꿔서(1->2, 2->3, ..., 9->1, 0->1) 새로운 실수 생성
+    let newFrac = '';
+    for(let i=0;i<mockList.length;i++){
+      const frac = (mockList[i].split('.')[1] || '').padEnd(12,'0');
+      const d = frac[i] || '0';
+      let nd;
+      if(d === '0') nd = '1';
+      else if(d === '9') nd = '1';
+      else nd = String((parseInt(d,10)+1)%10 || 1);
+      newFrac += nd;
+    }
+    const newNum = '0.' + newFrac;
+    newBox.innerHTML = `<div class="newnum">새 실수(대각선으로 구성): <span class="mono">${newNum}</span></div>
+                        <div class="hint">이 수는 위 목록의 i번째 수와 소수점 i번째 자리에서 반드시 다르므로, 목록 어디에도 없습니다 → 비가산.</div>`;
+  });
+
+  document.getElementById('btnResetList').addEventListener('click', ()=>{
+    mockList = [];
+    listEl.innerHTML = '';
+    newBox.innerHTML = '';
+  });
+</script>
+</body>
+</html>
